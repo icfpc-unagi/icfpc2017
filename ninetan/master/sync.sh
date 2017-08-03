@@ -15,7 +15,7 @@ fi
 
 # Reload systemd configs
 sudo rm /etc/systemd/system/ninetan-*
-sudo cp "$(dirname "${BASH_SOURCE}")"/ninetan-* /etc/systemd/system/
+sudo cp "$(dirname "${BASH_SOURCE}")"/systemd/ninetan-* /etc/systemd/system/
 sudo systemctl daemon-reload
 
 SERVICES=(
