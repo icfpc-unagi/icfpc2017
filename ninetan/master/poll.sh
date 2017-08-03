@@ -5,7 +5,7 @@ set -e -u
 cd ~/github
 git pull
 cd -
-bash sync.sh || true
+bash ./sync.sh || true
 {
   echo 'HTTP/1.0 200 OK'
   echo 'Content-Type: text/html'
