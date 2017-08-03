@@ -24,7 +24,7 @@ SERVICES=(
     ninetan-forward-ssh
     ninetan-poll
 )
-for service in "$(SERVICES)"; do
-  sudo systemctl enable "${SERVICE}"
-  sudo systemctl start "${SERVICE}"
+for service in "${SERVICES[@]}"; do
+  sudo systemctl enable "${service}"
+  sudo systemctl start "${service}"
 done
