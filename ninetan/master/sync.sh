@@ -12,3 +12,19 @@ fi
 if ! mountpoint /github; then
   mount --rbind /home/ninetan/github /github
 fi
+
+# Reload systemd configs
+sudo rm /etc/systemd/system/ninetan-*
+sudo cp "$(dirname "${BASH_SOURCE}")"/ninetan-* /etc/systemd/system/
+sudo systemctl daemon-reload
+
+SERVICES=(
+    ninetan-dropbox
+    ninetan-forward-github
+    ninetan-forward-ssh
+    ninetan-poll
+)
+for service in "$(SERVICES)"; do
+  sudo systemctl enable "${SERVICE}"
+  sudo systemctl start "${SERVICE}"
+done
