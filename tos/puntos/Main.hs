@@ -217,10 +217,3 @@ randomAI = Punter iP sP
     sP (QueryStop mvs scores) = do
       liftIO $ print scores
       return undefined
-
-
-
-{-
-  encodeState :: s -> JSON,
-  decodeState :: JSON -> s
--}
