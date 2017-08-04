@@ -25,15 +25,14 @@ instance ToJSON MyState where
   toJSON (MyState p r) = object ["p" .= p, "r" .= r]
 
 randAI1 :: Punter (StateT MyState IO)
-randAI1 = Punter iP sP
-  where
-    iP (InitData punter punters map_) = do
+randAI1 (QueryInit punter punters map_) = do
       let
         p = punter
         r = rivers map_
       put $ MyState p r
+      return $ AnswerReady p
 
-    sP (QueryMove mvs) = do
+randAI1 (QueryMove mvs) = do
       MyState p rOld <- get
       let
         rClaimed = catMaybes $ map riverFromClaim mvs
@@ -42,16 +41,16 @@ randAI1 = Punter iP sP
       put $ MyState p rNew
       if k == 0
       then
-        return $ MovePass p
+        return $ AnswerMove $ MovePass p
       else do
         ix <- liftIO $ randomRIO (0, k-1)
         let
           River s t = rNew !! ix
-        return $ MoveClaim p s t
+        return $ AnswerMove $ MoveClaim p s t
 
-    sP (QueryStop mvs scores) = do
+randAI1 (QueryStop mvs scores) = do
       liftIO $ print scores
-      return undefined
+      return AnswerNothing
 
 riverFromClaim (MoveClaim p s t) = Just $ River s t
 riverFromClaim _ = Nothing

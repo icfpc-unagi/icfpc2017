@@ -17,39 +17,41 @@ dbgDecode :: (FromJSON a) => BL.ByteString -> IO a
 dbgDecode = either fail return . eitherDecode
 
 readTest = do
-  x :: InitData <- dbgDecode =<< BL.fromStrict <$> B.getLine
+  x :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
   print x
   replicateM_ 4 $ do
-    y :: StepData <- dbgDecode =<< BL.fromStrict <$> B.getLine
+    y :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
     print y
 
 
 main = punterOfflineTest randAI1 >> return ()
 
-punterOnlineTest punter = flip runStateT undefined $ do
-  x :: InitData <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
+punterOfflineTest punter = flip runStateT undefined $ do
+  x :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
   liftIO $ print x
-  initPunter punter x
+  punter x
   s <- get
   liftIO $ print s
   replicateM_ 4 $ do
-    y :: StepData <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
+    y :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
     liftIO $ print y
-    stepPunter punter y
+    punter y
     s <- get
     liftIO $ print s
   
+{-
 punterOfflineTest punter = do
-  x :: InitData <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  ((), s) <- flip runStateT undefined $ initPunter punter x
+  x :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
+  ((), s) <- flip runStateT undefined $ punter x
   let
-    (InitData p _ _)  = x
+    (QueryInit p _ _)  = x
     a = AnswerReady p s
     aj = encode a
   BL.putStr aj
   putStrLn ""
 
-  y :: StepData <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  (mv, s2) <- flip runStateT s $ stepPunter punter y
+  y :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
+  (mv, s2) <- flip runStateT s $ punter y
   print mv
   print s2
+-}

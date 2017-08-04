@@ -15,9 +15,101 @@ import Data.List
 import Data.Maybe
 import System.Random
 
-type Nat = Int
+type Punter m = Query -> m Answer
 
-type PunterId = Nat
+
+data Query =
+    QueryInit {
+      punter :: PunterId,
+      punters :: Nat,
+      map_ :: Map_
+      }
+  | QueryMove {
+      moves :: [Move]
+      }
+  | QueryStop {
+      moves :: [Move],
+      scores :: [Score]
+      }
+  deriving Show
+
+instance FromJSON Query where
+  parseJSON = withObject "Query" $ \ v ->
+    (QueryInit
+      <$> v .: "punter"
+      <*> v .: "punters"
+      <*> v .: "map"
+    )
+    <|>
+    (v .: "move" >>=
+      (withObject "QueryMove" $ \ w -> QueryMove
+        <$> w .: "moves")
+    )
+    <|>
+    (v .: "stop" >>=
+      (withObject "QueryStop" $ \ w -> QueryStop
+        <$> w .: "moves"
+        <*> w .: "scores"
+      )
+    )
+
+
+data Answer =
+    AnswerReady PunterId
+  | AnswerMove Move
+  | AnswerNothing
+  deriving Show
+
+instance ToJSON Answer where
+  toJSON (AnswerReady p) = object ["ready" .= p]
+  toJSON (AnswerMove m) = toJSON m
+  toJSON AnswerNothing = object []
+
+
+data Move =
+    MoveClaim {
+      punter :: PunterId,
+      source :: SiteId,
+      target :: SiteId
+      }
+  | MovePass {punter :: PunterId}
+  deriving Show
+
+instance FromJSON Move where
+  parseJSON = withObject "Move" $ \ v ->
+    (v .: "claim" >>=
+      (withObject "MoveClaim" $ \ w -> MoveClaim
+        <$> w .: "punter"
+        <*> w .: "source"
+        <*> w .: "target"
+      )
+    )
+    <|>
+    (v .: "pass" >>=
+      (withObject "MovePass" $ \ w -> MovePass
+        <$> w .: "punter"
+      )
+    )
+
+instance ToJSON Move where
+  toJSON (MoveClaim p s t) = object ["claim" .= object [
+      "punter" .= p,
+      "source" .= s,
+      "target" .= t]]
+  toJSON (MovePass p) = object ["pass" .= object [
+      "punter" .= p]]
+
+
+data Score = Score {
+  punter :: PunterId,
+  score :: Nat
+  }
+  deriving Show
+instance FromJSON Score where
+  parseJSON = withObject "Score" $ \ v -> Score
+    <$> v .: "punter"
+    <*> v .: "score"
+
 
 data Map_ = Map_ {
   sites :: [Site],
@@ -50,88 +142,7 @@ instance Eq River where
     s0 == s1 && t0 == t1,
     s0 == t1 && t0 == s1]
 
+
+type Nat = Int
+type PunterId = Nat
 type SiteId = Nat
-
-data InitData = InitData {
-  punter :: PunterId,
-  punters :: Nat,
-  map_ :: Map_
-  }
-  deriving Show
-instance FromJSON InitData where
-  parseJSON = withObject "__init__" $ \ v -> InitData
-    <$> v .: "punter"
-    <*> v .: "punters"
-    <*> v .: "map"
-
-data StepData =
-    QueryMove {
-      moves :: [Move]
-      }
-  | QueryStop {
-      moves :: [Move],
-      scores :: [Score]
-      }
-  deriving Show
-instance FromJSON StepData where
-  parseJSON = withObject "__step__" $ \ v ->
-    (v .: "move" >>=
-      (withObject "__move__" $ \ w -> QueryMove
-        <$> w .: "moves")
-    )
-    <|>
-    (v .: "stop" >>=
-      (withObject "__stop__" $ \ w -> QueryStop
-        <$> w .: "moves"
-        <*> w .: "scores"
-      )
-    )
-
-data Move =
-    MoveClaim {
-      punter :: PunterId,
-      source :: SiteId,
-      target :: SiteId
-      }
-  | MovePass {punter :: PunterId}
-  deriving Show
-instance FromJSON Move where
-  parseJSON = withObject "Move" $ \ v ->
-    (v .: "claim" >>=
-      (withObject "Claim" $ \ w -> MoveClaim
-        <$> w .: "punter"
-        <*> w .: "source"
-        <*> w .: "target"
-      )
-    )
-    <|>
-    (v .: "pass" >>=
-      (withObject "Pass" $ \ w -> MovePass
-        <$> w .: "punter"
-      )
-    )
-
-data Score = Score {
-  punter :: PunterId,
-  score :: Nat
-  }
-  deriving Show
-instance FromJSON Score where
-  parseJSON = withObject "Score" $ \ v -> Score
-    <$> v .: "punter"
-    <*> v .: "score"
-
-data AnswerReady s = AnswerReady {
-  punter :: PunterId,
-  state :: s
-  }
-  deriving Show
-instance ToJSON s => ToJSON (AnswerReady s) where
-  toJSON (AnswerReady p s) = object ["ready" .= p, "state" .= toJSON s]
-
-data Punter m = Punter {
-  initPunter :: InitData -> m (),
-  stepPunter :: StepData -> m Move
-  }
-
-
