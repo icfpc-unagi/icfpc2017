@@ -13,6 +13,7 @@
 
 DEFINE_string(map, "", "map file");
 DEFINE_string(ai, "", "deprecated; specify AI commands as args");
+DEFINE_string(dot, "", "output dot file");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -24,6 +25,9 @@ std::pair<T, T> make_sorted_pair(const T& a, const T& b) {
   return a < b ? make_pair(a, b) : make_pair(b, a);
 }
 
+constexpr char* kColorPalette[] = {"blue", "green",  "brown", "pink",
+                                   "cyan", "violet", "gold",  "orange"};
+
 class Game {
   vector<string> ais_;
   // Map = {"sites" : [Site], "rivers" : [River], "mines" : [SiteId]}
@@ -32,6 +36,7 @@ class Game {
   // SiteId = Nat
   Json map_json_;
   vector<int64> site_ids_;
+  vector<pair<double, double>> site_pos_;
   map<int64, int> site_id_to_index_;
   map<pair<int64, int64>, int> river_to_index_;
   vector<int> mines_;
@@ -54,6 +59,8 @@ class Game {
     CHECK(err.empty()) << "loading " << FLAGS_map << ": " << err;
     for (auto site : map_json_["sites"].array_items()) {
       site_ids_.push_back(site["id"].int_value());
+      site_pos_.emplace_back(site["x"].number_value(),
+                             site["y"].number_value());
     }
     for (int i = 0; i < site_ids_.size(); ++i) {
       site_id_to_index_.emplace(site_ids_[i], i);
@@ -147,6 +154,33 @@ class Game {
         }
       }
       LOG(INFO) << ais_[p] << ": score=" << score;
+    }
+
+    if (!FLAGS_dot.empty()) {
+      string dot;
+      StrAppend(&dot, "graph {\nnode[shape=point]\n");
+      for (int i = 0; i < site_ids_.size(); ++i) {
+        StrAppend(&dot, site_ids_[i], "[pos=\"", site_pos_[i].first, ",",
+                  site_pos_[i].second, "!\"]\n");
+      }
+      for (int m : mines_) {
+        StrAppend(&dot, site_ids_[m], "[color=red]\n");
+      }
+      for (int i = 0; i < ais_.size(); ++i) {
+        for (int j = 0; j < n; ++j) {
+          for (int k : punter_river_adj_[i][j]) {
+            if (j < k) {
+              StrAppend(&dot, site_ids_[j], "--", site_ids_[k],
+                        "[color=", kColorPalette[i % 8], "]\n");
+            }
+          }
+        }
+      }
+      StrAppend(&dot, "}\n");
+
+      std::ofstream ofs(FLAGS_dot);
+      ofs << dot;
+      LOG(INFO) << "dot out: " << FLAGS_dot;
     }
   }
 
