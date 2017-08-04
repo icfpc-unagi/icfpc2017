@@ -2,7 +2,8 @@
 
 set -e -u
 
-rsync -a --delete --exclude='.git' --delete-excluded \
+rsync -a --delete \
+    --exclude='.git' --exclude='www/phpmyadmin' --delete-excluded \
     ~/github/ ~/Dropbox/ICFPC2017/github/
 
 if ! mountpoint /dropbox; then
