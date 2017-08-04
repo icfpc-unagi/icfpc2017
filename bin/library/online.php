@@ -42,7 +42,11 @@ function ReadFromServer() {
     }
     $bytes .= $digit;
   }
-  $result = fread($fp, intval($bytes));
+  $result = '';
+  while (intval($bytes) - strlen($result) > 0 &&
+         ($buffer = fread($fp, intval($bytes) - strlen($result))) !== FALSE) {
+    $result .= $buffer;
+  }
   Message('0;32', rtrim("Read from server: $result") . "\n");
   $object = json_decode($result, TRUE);
   if (!is_array($object)) {
