@@ -16,3 +16,8 @@ def build(bld):
                     gtest/gtest_main.cc',
     target       = 'gtest',
     includes     = '.')
+
+  bld.stlib(
+    source       = 'json11/json11.cpp',
+    target       = 'json11',
+    includes     = '.')
