@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <stack>
 #include <string>
 #include <vector>
 #include "base/base.h"
@@ -18,6 +19,11 @@ using ninetan::StreamUtil;
 
 typedef string id_type;
 
+template <typename T>
+std::pair<T, T> make_sorted_pair(const T& a, const T& b) {
+  return a < b ? make_pair(a, b) : make_pair(b, a);
+}
+
 class Game {
   vector<string> ais_;
   // Map = {"sites" : [Site], "rivers" : [River], "mines" : [SiteId]}
@@ -26,10 +32,13 @@ class Game {
   // SiteId = Nat
   Json map_json_;
   vector<int64> site_ids_;
+  map<int64, int> site_id_to_index_;
   map<pair<int64, int64>, int> river_to_index_;
+  vector<int> mines_;
 
   vector<Json> states_;
   vector<bool> river_claimed_;
+  vector<vector<vector<int>>> punter_river_adj_;
   vector<Json> last_moves_;
   int claimed_;
 
@@ -44,20 +53,25 @@ class Game {
                             err);
     CHECK(err.empty()) << "loading " << FLAGS_map << ": " << err;
     for (auto site : map_json_["sites"].array_items()) {
-      site_ids_.push_back(site["id"].number_value());
+      site_ids_.push_back(site["id"].int_value());
     }
-    const auto& rivers = map_json_["rivers"].array_items();
+    for (int i = 0; i < site_ids_.size(); ++i) {
+      site_id_to_index_.emplace(site_ids_[i], i);
+    }
+    auto rivers = map_json_["rivers"].array_items();
     for (int i = 0; i < rivers.size(); ++i) {
-      int64 s = rivers[i]["source"].number_value();
-      int64 t = rivers[i]["target"].number_value();
-      if (s < t) {
-        river_to_index_.emplace(make_pair(s, t), i);
-      } else {
-        river_to_index_.emplace(make_pair(t, s), i);
-      }
+      river_to_index_.emplace(
+          make_sorted_pair<int64>(rivers[i]["source"].int_value(),
+                                  rivers[i]["target"].int_value()),
+          i);
     }
-    river_claimed_.resize(rivers.size());
+    river_claimed_.resize(river_to_index_.size());
+    for (const auto& mine : map_json_["mines"].array_items()) {
+      mines_.push_back(site_id_to_index_[mine.int_value()]);
+    }
 
+    punter_river_adj_.resize(ais_.size(),
+                             vector<vector<int>>(site_ids_.size()));
     states_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
@@ -70,14 +84,13 @@ class Game {
     for (int i = 0; i < ais_.size(); ++i) {
       states_[i] = setup(i, ais_.size(), map_json_)["state"];
     }
-    for (int i = 0; i < river_claimed_.size(); ++i) {
+    for (int turn = 0; turn < river_claimed_.size(); ++turn) {
       for (int i = 0; i < ais_.size(); ++i) {
         auto move_state = gameplay(i, last_moves_, states_[i]);
         auto claim = move_state.first["claim"];
         int64 s = claim["source"].int_value();
         int64 t = claim["target"].int_value();
-        auto it =
-            river_to_index_.find(s < t ? make_pair(s, t) : make_pair(t, s));
+        auto it = river_to_index_.find(make_sorted_pair(s, t));
         if (it == river_to_index_.end()) {
           LOG(ERROR) << ais_[i] << ": " << claim.dump();
           continue;
@@ -91,6 +104,10 @@ class Game {
           river_claimed_[river_index] = true;
           claimed_++;
           last_moves_[i] = move_state.first;
+          int s_i = site_id_to_index_[s];
+          int t_i = site_id_to_index_[t];
+          punter_river_adj_[i][s_i].push_back(t_i);
+          punter_river_adj_[i][t_i].push_back(s_i);
         }
         states_[i] = move_state.second;
       }
@@ -99,10 +116,38 @@ class Game {
         break;
       }
     }
-    LOG(INFO) << Json(Json::object{
-                          {"stop", Json::object{{"moves", last_moves_},
-                                                {"score", "<unimplemented>"}}}})
-                     .dump();
+
+    int n = site_ids_.size();
+    vector<vector<int>> d(n, vector<int>(n, INT_MAX / 2));
+    for (int i = 0; i < n; ++i) d[i][i] = 0;
+    for (const auto& r : river_to_index_) {
+      d[r.first.first][r.first.second] = 1;
+      d[r.first.second][r.first.first] = 1;
+    }
+    for (int k = 0; k < n; ++k) {
+      for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < n; ++j) {
+          d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
+        }
+      }
+    }
+    for (int p = 0; p < ais_.size(); ++p) {
+      int score = 0;
+      for (int m : mines_) {
+        vector<bool> visited(n, false);
+        std::stack<int> st;
+        st.push(m);
+        while (!st.empty()) {
+          int s = st.top();
+          st.pop();
+          if (visited[s]) continue;
+          visited[s] = true;
+          score += d[m][s] * d[m][s];
+          for (int t : punter_river_adj_[p][s]) st.push(t);
+        }
+      }
+      LOG(INFO) << ais_[p] << ": score=" << score;
+    }
   }
 
  private:
