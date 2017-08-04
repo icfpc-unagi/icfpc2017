@@ -7,13 +7,6 @@ import Data.Aeson
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
-{-
-type InitData = JSON
-type PlayData = JSON
-type MoveData = JSON
-type StopData = JSON
--}
-
 type Nat = Int
 
 type PunterId = Nat
@@ -56,43 +49,29 @@ instance FromJSON InitData where
     <*> v .: "punters"
     <*> v .: "map"
 
-data PlayData = PlayData {
-  move :: Moves
-  -- , state :: State_
-  }
+data StepData =
+    MoveData {
+      moves :: [Move]
+      -- , state :: State_
+      }
+  | StopData {
+      moves :: [Move],
+      scores :: [Score]
+      }
   deriving Show
-instance FromJSON PlayData where
-  parseJSON = withObject "__play__" $ \ v -> PlayData
-    <$> v .: "move"
-    -- <*> v .: "state"
-
-data Moves = Moves {moves :: [Move]}
-  deriving Show
-instance FromJSON Moves where
-  parseJSON = withObject "Moves" $ \ v -> Moves
-    <$> v .: "moves"
-
-{-
-data Move = Either MovePass MoveClaim
-
-data MoveClaim = MoveClaim {
-  punter :: PunterId,
-  source :: SiteId,
-  target :: SiteId
-  }
-  deriving Show
-instance FromJSON MoveClaim where
-  parseJSON = withObject "Move(C)" $ \ v -> MoveClaim
-    <$> v .: "punter"
-    <*> v .: "source"
-    <*> v .: "target"
-
-data MovePass = MovePass {punter :: PunterId}
-  deriving Show
-instance FromJSON MovePass where
-  parseJSON = withObject "Move(P)" $ \ v -> MovePass
-    <$> v .: "punter"
--}
+instance FromJSON StepData where
+  parseJSON = withObject "__step__" $ \ v ->
+    (v .: "move" >>=
+      (withObject "__move__" $ \ w -> MoveData
+        <$> w .: "moves")
+    )
+    <|>
+    (v .: "stop" >>=
+      (withObject "__stop__" $ \ w -> StopData
+        <$> w .: "moves"
+        <*> w .: "scores"
+      )
+    )
 
 data Move =
     MoveClaim {
@@ -103,40 +82,20 @@ data Move =
   | MovePass {punter :: PunterId}
   deriving Show
 instance FromJSON Move where
-  parseJSON = withObject "Move" $ \ v -> (do
-      w <- v .: "claim"
-      let parseJSONClaim = withObject "Claim" $ \ w -> MoveClaim
-            <$> w .: "punter"
-            <*> w .: "source"
-            <*> w .: "target"
-      parseJSONClaim w
-    ) <|> (do
-      w <- v .: "pass"
-      let parseJSONPass = withObject "Pass" $ \ w -> MovePass
-            <$> w .: "punter"
-      parseJSONPass w
-    )
-{-
   parseJSON = withObject "Move" $ \ v ->
-    (MoveClaim
-      <$> v .: "claim" .: "punter"
-      <*> v .: "claim" .: "source"
-      <*> v .: "claim" .: "target"
+    (v .: "claim" >>=
+      (withObject "Claim" $ \ w -> MoveClaim
+        <$> w .: "punter"
+        <*> w .: "source"
+        <*> w .: "target"
+      )
     )
     <|>
-    (MovePass <$> v .: "pass" .: "punter")
--}
-
-
-data StopData = StopData {
-  moves :: [Move],
-  scores :: [Score]
-  }
-  deriving Show
-instance FromJSON StopData where
-  parseJSON = withObject "__stop__" $ \ v -> StopData
-    <$> v .: "moves"
-    <*> v .: "scores"
+    (v .: "pass" >>=
+      (withObject "Pass" $ \ w -> MovePass
+        <$> w .: "punter"
+      )
+    )
 
 data Score = Score {
   punter :: PunterId,
@@ -154,11 +113,9 @@ dbgDecode = either fail return . eitherDecode
 main = do
   x :: InitData <- dbgDecode =<< BL.fromStrict <$> B.getLine
   print x
-  replicateM_ 3 $ do
-    y :: PlayData <- dbgDecode =<< BL.fromStrict <$> B.getLine
+  replicateM_ 4 $ do
+    y :: StepData <- dbgDecode =<< BL.fromStrict <$> B.getLine
     print y
-  z :: StopData <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  print z
   
 
 
