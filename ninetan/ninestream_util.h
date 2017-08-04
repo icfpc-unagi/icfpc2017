@@ -61,7 +61,7 @@ class StreamUtil {
   static GenericResponse Exec(const string& command);
   static ReadResponse Read(const string& stream_id, int timeout = -1);
   static WriteResponse Write(const string& stream_id, const string& data);
-  static GenericResponse Kill(const string& stream_id, int timeout = 1000);
+  static GenericResponse Kill(const string& stream_id, int timeout = -1);
   static ListResponse List(const string& stream_id);
   static GenericResponse Exit(int exit_code = 0);
 
