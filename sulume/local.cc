@@ -31,6 +31,7 @@ class Game {
   vector<Json> states_;
   vector<bool> river_claimed_;
   vector<Json> last_moves_;
+  int claimed_;
 
  public:
   void init() {
@@ -61,6 +62,7 @@ class Game {
       last_moves_.emplace_back(
           Json::object{{"pass", Json::object{{"punter", 1}}}});
     }
+    claimed_ = 0;
   }
 
   void start() {
@@ -75,7 +77,10 @@ class Game {
         int64 t = claim["target"].int_value();
         auto it =
             river_to_index_.find(s < t ? make_pair(s, t) : make_pair(t, s));
-        CHECK(it != river_to_index_.end());
+        if (it == river_to_index_.end()) {
+          LOG(ERROR) << ais_[i] << ": " << claim.dump();
+          continue;
+        }
         int river_index = it->second;
         if (river_claimed_[river_index]) {
           LOG(WARNING) << "river claimed twice: " << claim.dump();
@@ -83,9 +88,14 @@ class Game {
               Json::object{{"pass", Json::object{{"punter", claim["punter"]}}}};
         } else {
           river_claimed_[river_index] = true;
+          claimed_++;
           last_moves_[i] = move_state.first;
         }
         states_[i] = move_state.second;
+      }
+      if (claimed_ >= river_claimed_.size()) {
+        LOG(INFO) << "All rivers claimed; game ends.";
+        break;
       }
     }
     LOG(INFO) << Json(Json::object{
