@@ -2,6 +2,7 @@
 
 source "$(dirname "${BASH_SOURCE}")"/imos-variables || exit 1
 DEFINE_string map 'sample' 'Map'
+DEFINE_string dot '' 'dot'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 cd "$(dirname "${BASH_SOURCE}")"
@@ -13,4 +14,4 @@ for arg in "$@"; do
   args+=("cd $(pwd); ${WRAPPER} ${arg}")
 done
 
-bazel run -c opt //sulume:run-local -- --map="${FLAGS_map}" "${args[@]}"
+bazel run -c opt //sulume:run-local -- --map="${FLAGS_map}" --dot="${FLAGS_dot}" "${args[@]}"
