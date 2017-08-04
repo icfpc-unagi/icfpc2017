@@ -3,7 +3,7 @@ Description=ninetan-forward-github
 After=syslog.target network.target
 
 [Service]
-ExecStart=/usr/bin/ssh -R 60180:localhost:18080 -N mewtwo.sx9.jp
+ExecStart=/usr/bin/ssh -R 60080:localhost:80 -N mewtwo.sx9.jp
 User=ninetan
 Group=ninetan
 Restart=always
