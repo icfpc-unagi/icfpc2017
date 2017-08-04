@@ -1,0 +1,12 @@
+[Unit]
+Description=ninetan-sync
+After=syslog.target network.target
+
+[Service]
+ExecStart=/home/ninetan/github/ninetan/slave/sync.sh
+User=ninetan
+Group=ninetan
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
