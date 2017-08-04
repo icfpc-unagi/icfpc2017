@@ -106,8 +106,7 @@ function Main() {
   }
 
   $setup = ReadFromServer();
-  $punter_id =
-      $setup['punter'] ?: Fatal('punter should exist in setup response.');
+  $punter_id = $setup['punter'];
   Message('1;33', "Your punter: $punter_id");
   $result = RunAi($setup);
   if (($result['ready'] ?: -1) != $punter_id) {
