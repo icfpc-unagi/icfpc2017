@@ -10,6 +10,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 
 import Protocol
+import Offline
 import AI.Rand1 (randAI1)
 
 
@@ -26,7 +27,7 @@ readTest = do
 
 main = punterOfflineTest randAI1 >> return ()
 
-punterOfflineTest punter = flip runStateT undefined $
+punterOnlineTest punter = flip runStateT undefined $
     replicateM_ 5 $ do
   input :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
   liftIO $ print input
@@ -35,10 +36,14 @@ punterOfflineTest punter = flip runStateT undefined $
   s <- get
   liftIO $ print s
   
+
+punterOfflineTest punter =
+  replicateM 5 $ offline punter
 {-
 punterOfflineTest punter = do
-  x :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  ((), s) <- flip runStateT undefined $ punter x
+  q :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
+  (a, s) <- flip runStateT undefined $ punter q
+  encodeWithState s a
   let
     (QueryInit p _ _)  = x
     a = AnswerReady p s
