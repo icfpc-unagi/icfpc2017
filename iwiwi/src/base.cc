@@ -75,3 +75,7 @@ void OutputJSON(const json11::Json &json) {
   ostringstream os;
   cout << str.length() << ":" << str << endl;
 }
+
+bool IsSetup(const json11::Json &json) {
+  return json["state"].is_null();
+}

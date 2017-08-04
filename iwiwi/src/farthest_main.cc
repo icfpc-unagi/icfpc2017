@@ -94,6 +94,7 @@ vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
 // AI
 //
 
+namespace {
 struct MyAIState {
   template<class Archive>
   void serialize(Archive& ar, unsigned int ver) {}
@@ -101,13 +102,16 @@ struct MyAIState {
 
 using MyState = State<MyAIState>;
 
-namespace {
 GameState game;
 
 int N;
 Graph G;
 
-pair<int, int> Solve(const MyState &s) {
+MyAIState Setup(const GameState &game) {
+  return MyAIState();
+}
+
+pair<pair<int, int>, MyAIState> Play(const MyState &s) {
   game = s.game;
   G = ConstructGraph(game);
   N = G.size();
@@ -143,9 +147,9 @@ pair<int, int> Solve(const MyState &s) {
   cerr << bst.first << endl;
 
   if (bst.first != -1) {
-    return bst.second;
+    return make_pair(bst.second, MyAIState());
   } else {
-    return RandomRemaining(game);
+    return make_pair(RandomRemaining(game), MyAIState());
   }
 }
 }  // namespace
@@ -154,21 +158,32 @@ int main() {
   srand(getpid() * time(NULL));
 
   // Input
-  auto j = InputJSON();
-  MyState s = GetState<MyAIState>(j);
+  json11::Json in_json = InputJSON(), out_json;
 
-  // Solve
-  pair<int, int> res = Solve(s);
+  if (IsSetup(in_json)) {
+    // Setup
+    MyState s;
+    s.game = ConstructGameState(in_json);
+    s.ai = Setup(s.game);
+    out_json = json11::Json::object{
+      {"ready", s.game.rank},
+      {"state", DumpState(s)},
+    };
+  } else {
+    // Play
+    MyState s = GetState<MyAIState>(in_json);
+    pair<pair<int, int>, MyAIState> res = Play(s);
+    s.ai = res.second;
+
+    out_json = json11::Json::object{
+      {"claim", json11::Json::object{
+          {"punter", s.game.rank},
+          {"source", s.game.map.sites[res.first.first].id},
+          {"target", s.game.map.sites[res.first.second].id}}},
+      {"state", DumpState(s) }};
+  }
 
   // Output
-  json11::Json out_json = json11::Json::object {
-    { "claim", json11::Json::object {
-        { "punter", s.game.rank },
-        { "source", s.game.map.sites[res.first].id },
-        { "target", s.game.map.sites[res.second].id },
-      }, },
-    { "state", DumpState(s) },
-  };
   OutputJSON(out_json);
 
   return 0;

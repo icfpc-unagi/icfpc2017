@@ -112,29 +112,25 @@ struct State {
 template<typename AIState>
 State<AIState> GetState(const json11::Json &j) {
   State<AIState> s;
-  if (j["state"].is_null()) {  // First turn
-    s.game = ConstructGameState(j);
-  } else {
-    // Restore
-    istringstream iss(j["state"].string_value());
-    boost::archive::text_iarchive ia(iss);
-    ia >> s;
+  // Restore
+  istringstream iss(j["state"].string_value());
+  boost::archive::text_iarchive ia(iss);
+  ia >> s;
 
-    // TODO: check move or score
+  // TODO: check move or score
 
-    // Advance
-    map<int, int> id_to_idx = ConstructIdToIndexMap(s.game.map);
+  // Advance
+  map<int, int> id_to_idx = ConstructIdToIndexMap(s.game.map);
 
-    s.game.turn += 1;
-    auto moves = j["move"]["moves"].array_items();
-    for (auto &&move : moves) {
-      if (move["claim"].is_null()) continue;
-      auto jj = move["claim"];
-      s.game.claims.emplace_back
-          (Claim{jj["punter"].int_value(),
-                id_to_idx[jj["source"].int_value()],
-                id_to_idx[jj["target"].int_value()]});
-    }
+  s.game.turn += 1;
+  auto moves = j["move"]["moves"].array_items();
+  for (auto &&move : moves) {
+    if (move["claim"].is_null()) continue;
+    auto jj = move["claim"];
+    s.game.claims.emplace_back
+        (Claim{jj["punter"].int_value(),
+              id_to_idx[jj["source"].int_value()],
+              id_to_idx[jj["target"].int_value()]});
   }
   return s;
 }
@@ -152,3 +148,4 @@ string DumpState(const State &s) {
 //
 json11::Json InputJSON();
 void OutputJSON(const json11::Json &json);
+bool IsSetup(const json11::Json &json);
