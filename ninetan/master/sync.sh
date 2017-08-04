@@ -21,6 +21,7 @@ sudo systemctl daemon-reload
 SERVICES=(
     ninetan-dropbox
     ninetan-forward-github
+    ninetan-forward-http
     ninetan-forward-ssh
     ninetan-poll
 )
