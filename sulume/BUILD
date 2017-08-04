@@ -17,3 +17,14 @@ cc_library(
     srcs = ["json11.cpp"],
     hdrs = ["json11.hpp"],
 )
+
+sh_binary(
+    name = "run-local",
+    srcs = ["run-local.sh"],
+    data = [
+        ":local",
+        "//ninetan:ninestream",
+        "//bin",
+        "//map",
+    ],
+)

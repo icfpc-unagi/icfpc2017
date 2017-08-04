@@ -1,0 +1,11 @@
+#!/bin/bash
+
+source "$(dirname "${BASH_SOURCE}")"/imos-variables || exit 1
+DEFINE_string map 'sample' 'Map'
+IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
+
+cd "$(dirname "${BASH_SOURCE}")"
+WRAPPER="$(pwd)/wrapper"
+cd - >/dev/null
+
+bazel run -c opt //sulume:run-local -- --map="${FLAGS_map}" "cd $(pwd); ${WRAPPER} $*"

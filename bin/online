@@ -10,4 +10,4 @@ PUNTER_NAME="${FLAGS_name}" \
 PUNTER_HOST="${FLAGS_host}" \
 PUNTER_PORT="${FLAGS_port}" \
 PUNTER="$*" \
-    php "$(dirname "${BASH_SOURCE}")/library/online.php"
+    /usr/bin/php "$(dirname "${BASH_SOURCE}")/library/online.php"
