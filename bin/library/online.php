@@ -109,7 +109,7 @@ function Main() {
   $punter_id = $setup['punter'];
   Message('1;33', "Your punter: $punter_id");
   $result = RunAi($setup);
-  if (($result['ready'] ?: -1) != $punter_id) {
+  if (!isset($result['ready'])) {
     Fatal("AI should return ready.");
   }
 
