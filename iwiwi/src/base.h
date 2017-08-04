@@ -149,3 +149,42 @@ string DumpState(const State &s) {
 json11::Json InputJSON();
 void OutputJSON(const json11::Json &json);
 bool IsSetup(const json11::Json &json);
+
+//
+// Entry point
+//
+
+
+template<typename AIState, typename SetupFunc, typename PlayFunc>
+void Run(SetupFunc setup, PlayFunc play) {
+  using MyState = State<AIState>;
+
+  // Input
+  json11::Json in_json = InputJSON(), out_json;
+
+  if (IsSetup(in_json)) {
+    // Setup
+    MyState s;
+    s.game = ConstructGameState(in_json);
+    s.ai = setup(s.game);
+    out_json = json11::Json::object{
+      {"ready", s.game.rank},
+      {"state", DumpState(s)},
+    };
+  } else {
+    // Play
+    MyState s = GetState<AIState>(in_json);
+    pair<pair<int, int>, AIState> res = play(s);
+    s.ai = res.second;
+
+    out_json = json11::Json::object{
+      {"claim", json11::Json::object{
+          {"punter", s.game.rank},
+          {"source", s.game.map.sites[res.first.first].id},
+          {"target", s.game.map.sites[res.first.second].id}}},
+      {"state", DumpState(s) }};
+  }
+
+  // Output
+  OutputJSON(out_json);
+}

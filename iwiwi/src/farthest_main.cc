@@ -156,35 +156,6 @@ pair<pair<int, int>, MyAIState> Play(const MyState &s) {
 
 int main() {
   srand(getpid() * time(NULL));
-
-  // Input
-  json11::Json in_json = InputJSON(), out_json;
-
-  if (IsSetup(in_json)) {
-    // Setup
-    MyState s;
-    s.game = ConstructGameState(in_json);
-    s.ai = Setup(s.game);
-    out_json = json11::Json::object{
-      {"ready", s.game.rank},
-      {"state", DumpState(s)},
-    };
-  } else {
-    // Play
-    MyState s = GetState<MyAIState>(in_json);
-    pair<pair<int, int>, MyAIState> res = Play(s);
-    s.ai = res.second;
-
-    out_json = json11::Json::object{
-      {"claim", json11::Json::object{
-          {"punter", s.game.rank},
-          {"source", s.game.map.sites[res.first.first].id},
-          {"target", s.game.map.sites[res.first.second].id}}},
-      {"state", DumpState(s) }};
-  }
-
-  // Output
-  OutputJSON(out_json);
-
+  Run<MyAIState>(Setup, Play);
   return 0;
 }
