@@ -26,18 +26,14 @@ readTest = do
 
 main = punterOfflineTest randAI1 >> return ()
 
-punterOfflineTest punter = flip runStateT undefined $ do
-  x :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
-  liftIO $ print x
-  punter x
+punterOfflineTest punter = flip runStateT undefined $
+    replicateM_ 5 $ do
+  input :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
+  liftIO $ print input
+  output <- punter input
+  liftIO $ print output
   s <- get
   liftIO $ print s
-  replicateM_ 4 $ do
-    y :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
-    liftIO $ print y
-    punter y
-    s <- get
-    liftIO $ print s
   
 {-
 punterOfflineTest punter = do
