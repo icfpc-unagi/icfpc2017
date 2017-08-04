@@ -76,7 +76,11 @@ function RunAi($command) {
     fclose($pipes[1]);
     proc_close($proc);
   } else {
-    $input = fgets(STDIN, 1000000);
+    $input = '';
+    while (($buffer = fgets(STDIN, 1000)) !== FALSE) {
+      $input .= $buffer;
+      if (substr($input, -1) == "\n") break;
+    }
   }
   $result = explode(':', $input, 2);
   if (count($result) != 2) {
@@ -102,7 +106,12 @@ function Main() {
   }
 
   $setup = ReadFromServer();
+  $punter_id = $setup['punter'];
+  Message('1;33', "Your punter: $punter_id");
   $result = RunAi($setup);
+  if (!isset($result['ready'])) {
+    Fatal("AI should return ready.");
+  }
 
   if (!isset($result['state'])) {
     Error('AI does not return state in setting up.');
@@ -127,7 +136,13 @@ function Main() {
       }
       WriteToServer($result);
     } else if (isset($operation['stop'])) {
-      fwrite(STDERR, "Result: " . json_encode($operation) . "\n");
+      Message('', '===== Result =====');
+      foreach ($operation['stop']['scores'] as $score) {
+        $is_mine = ($score['punter'] == $punter_id);
+        Message($is_mine ? '1;33' : '',
+                "Punter {$score['punter']}: {$score['score']}" .
+                ($is_mine ? '  <== YOU!' : ''));
+      }
       break;
     } else {
       Fatal('Unknown operation from server: ' . json_encode($operation));

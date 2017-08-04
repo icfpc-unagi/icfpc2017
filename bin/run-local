@@ -8,4 +8,9 @@ cd "$(dirname "${BASH_SOURCE}")"
 WRAPPER="$(pwd)/wrapper"
 cd - >/dev/null
 
-bazel run -c opt //sulume:run-local -- --map="${FLAGS_map}" "cd $(pwd); ${WRAPPER} $*"
+args=()
+for arg in "$@"; do
+  args+=("cd $(pwd); ${WRAPPER} ${arg}")
+done
+
+bazel run -c opt //sulume:run-local -- --map="${FLAGS_map}" "${args[@]}"
