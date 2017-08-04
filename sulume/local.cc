@@ -35,7 +35,7 @@ class Game {
  public:
   void init() {
     string err;
-    ifstream ifs(FLAGS_map);
+    std::ifstream ifs(FLAGS_map);
     map_json_ = Json::parse(string((std::istreambuf_iterator<char>(ifs)),
                                    std::istreambuf_iterator<char>()),
                             err);
