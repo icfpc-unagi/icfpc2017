@@ -11,7 +11,7 @@
 #include "strings/strcat.h"
 
 DEFINE_string(map, "", "map file");
-DEFINE_string(ai, "", "executable");
+DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -34,13 +34,15 @@ class Game {
   int claimed_;
 
  public:
+  Game(vector<string> ais) : ais_(ais) {}
+
   void init() {
     string err;
     std::ifstream ifs(FLAGS_map);
     map_json_ = Json::parse(string((std::istreambuf_iterator<char>(ifs)),
                                    std::istreambuf_iterator<char>()),
                             err);
-    CHECK(err.empty()) << err;
+    CHECK(err.empty()) << "loading " << FLAGS_map << ": " << err;
     for (auto site : map_json_["sites"].array_items()) {
       site_ids_.push_back(site["id"].number_value());
     }
@@ -56,7 +58,6 @@ class Game {
     }
     river_claimed_.resize(rivers.size());
 
-    ais_.resize(2, FLAGS_ai);
     states_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
@@ -154,11 +155,15 @@ class Game {
 int main(int argc, char** argv) {
   ParseCommandLineFlags(&argc, &argv);
   if (FLAGS_map.empty()) {
-    puts("required --map --ai");
+    puts("required --map");
     return 0;
   }
 
-  Game game;
+  vector<string> ais;
+  if (!FLAGS_ai.empty()) ais.push_back(FLAGS_ai);
+  for (int i = 1; i < argc; ++i) ais.push_back(argv[i]);
+
+  Game game(ais);
   game.init();
   game.start();
 
