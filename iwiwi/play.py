@@ -18,10 +18,14 @@ def main(map, player):
         print('--')
 
         p = subprocess.Popen(player, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        p.stdin.write('0:'.encode())
         p.stdin.write(json.dumps(nxt).encode())
         p.stdin.close()
 
-        prv = json.loads(p.stdout.read().decode('utf-8'))
+        str = p.stdout.read().decode('utf-8')
+        print(str)
+        str = str.split(':', maxsplit=1)[1]
+        prv = json.loads(str)
 
         nxt = {
             'move': {'moves': [{'claim': prv['claim']}]},

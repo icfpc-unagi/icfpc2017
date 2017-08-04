@@ -1,8 +1,11 @@
+#pragma once
+
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 #include <stack>
+#include <algorithm>
 #include <queue>
 #include <set>
 #include <map>
@@ -16,6 +19,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <fstream>
+#include <numeric>
 
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/vector.hpp>
@@ -48,7 +52,8 @@ struct Site {
   }
 };
 
-struct Map {  vector<Site> sites;
+struct Map {
+  vector<Site> sites;
   vector<pair<int, int>> rivers;
   vector<int> mines;
 
@@ -141,3 +146,9 @@ string DumpState(const State &s) {
   oa << s;
   return oss.str();
 }
+
+//
+// IO
+//
+json11::Json InputJSON();
+void OutputJSON(const json11::Json &json);

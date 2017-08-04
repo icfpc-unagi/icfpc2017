@@ -46,3 +46,32 @@ map<int, int> ConstructIdToIndexMap(const Map &s) {
   }
   return ma;
 }
+
+//
+// IO
+//
+json11::Json InputJSON() {
+  std::string stdin((std::istreambuf_iterator<char>(cin)),
+                    std::istreambuf_iterator<char>());
+
+  // Remove 'n:' part
+  int i = 0;
+  while (isdigit(stdin[i])) ++i;
+  assert(stdin[i] == ':');
+  stdin = stdin.substr(i + 1);
+
+  string err;
+  auto j = json11::Json::parse(stdin, err);
+  if (!err.empty()) {
+    cerr << "JSON Error: " << err << endl;
+    assert(err.empty());
+  }
+
+  return j;
+}
+
+void OutputJSON(const json11::Json &json) {
+  string str = json.dump();
+  ostringstream os;
+  cout << str.length() << ":" << str << endl;
+}
