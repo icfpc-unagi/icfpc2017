@@ -9,7 +9,7 @@ using MyState = State<MyAIState>;
 
 GameState game_state;
 
-pair<int, int> solve() {
+pair<int, int> Solve() {
   set<pair<int, int>> usd;
   for (auto &&claim : game_state.claims) {
     int a = claim.target;
@@ -29,6 +29,7 @@ pair<int, int> solve() {
 }
 
 int main() {
+  // Input
   std::string stdin((std::istreambuf_iterator<char>(cin)),
                     std::istreambuf_iterator<char>());
   string err;
@@ -37,8 +38,10 @@ int main() {
   MyState s = GetState<MyAIState>(j);
   game_state = s.game;
 
-  pair<int, int> res = solve();
+  // Solve
+  pair<int, int> res = Solve();
 
+  // Output
   json11::Json out_json = json11::Json::object {
     { "claim", json11::Json::object {
         { "punter", s.game.rank },
@@ -47,7 +50,6 @@ int main() {
       }, },
     { "state", DumpState(s) },
   };
-
   cout << out_json.dump() << endl;
 
   return 0;

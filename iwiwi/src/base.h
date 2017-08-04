@@ -82,7 +82,7 @@ struct GameState {
   vector<Claim> claims;
 
   template<class Archive> void serialize(Archive& ar, unsigned int ver) {
-    ar & rank & size & map;
+    ar & rank & size & map & turn & claims;
   }
 };
 
@@ -115,11 +115,13 @@ State<AIState> GetState(const json11::Json &j) {
     boost::archive::text_iarchive ia(iss);
     ia >> s;
 
+    // TODO: check move or score
+
     // Advance
     map<int, int> id_to_idx = ConstructIdToIndexMap(s.game.map);
 
     s.game.turn += 1;
-    auto moves = j["moves"].array_items();
+    auto moves = j["move"]["moves"].array_items();
     for (auto &&move : moves) {
       if (move["claim"].is_null()) continue;
       auto jj = move["claim"];
