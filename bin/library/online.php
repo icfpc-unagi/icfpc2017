@@ -16,6 +16,9 @@ function Error($message) {
 $host = getenv('PUNTER_HOST') ?: 'punter.inf.ed.ac.uk';
 $port = getenv('PUNTER_PORT') ?: Fatal('PUNTER_PORT must be specified.');
 $fp = fsockopen($host, $port);
+if (!$fp) {
+  Fatal("Failed to connect $host:$port.");
+}
 $punter = getenv('PUNTER') ?: Fatal('PUNTER must be specified,');
 
 function Command($command) {
@@ -67,6 +70,7 @@ function RunAi($command) {
   global $punter;
   Message('0;34', "Write to AI: " . json_encode($command) . "\n");
   if ($punter != '-') {
+    $start_time = microtime(TRUE);
     $proc = proc_open($punter, [['pipe', 'r'], ['pipe', 'w']], $pipes);
     $json = json_encode($command) . "\n";
     fwrite($pipes[0], strlen($json) . ":$json");
@@ -75,6 +79,8 @@ function RunAi($command) {
     $input = fgets($pipes[1], 1000000);
     fclose($pipes[1]);
     proc_close($proc);
+    Message('0;34', 'Elapsed time: ' .
+                    round((microtime(TRUE) - $start_time) * 1000) . ' ms');
   } else {
     $input = '';
     while (($buffer = fgets(STDIN, 1000)) !== FALSE) {
@@ -95,6 +101,11 @@ function RunAi($command) {
   return $object;
 }
 
+function GetRiverId($source, $target) {
+  if ($source > $target) return GetRiverId($target, $source);
+  return "$source-$target";
+}
+
 function Main() {
   $name = getenv('PUNTER_NAME') ?: 'U Punter';
 
@@ -106,11 +117,26 @@ function Main() {
   }
 
   $setup = ReadFromServer();
+  if (!isset($setup['punter'])) {
+    Fatal('setup response must have punter field.');
+  }
   $punter_id = $setup['punter'];
   Message('1;33', "Your punter: $punter_id");
+  if (!isset($setup['map']['rivers'])) {
+    Fatal('setup response must have rivers field.');
+  }
+  $rivers = [];
+  foreach ($setup['map']['rivers'] as $river) {
+    $rivers[GetRiverId($river['source'], $river['target'])] = -1;
+  }
+
   $result = RunAi($setup);
   if (!isset($result['ready'])) {
     Fatal("AI should return ready.");
+  }
+  if ($result['ready'] !== $punter_id) {
+    Fatal('ready must correspond to punter_id: ' .
+          "$punter_id vs {$result['ready']}.");
   }
 
   if (!isset($result['state'])) {
@@ -124,6 +150,19 @@ function Main() {
   while (TRUE) {
     $operation = ReadFromServer();
     if (isset($operation['move'])) {
+      foreach ($operation['move']['moves'] as $move) {
+        if (isset($move['claim'])) {
+          $claim = $move['claim'];
+          $rivers[GetRiverId($claim['source'], $claim['target'])] =
+              $claim['punter'];
+        }
+      }
+      $num_rivers = count($rivers);
+      $punter_counts = array_count_values($rivers);
+      $num_empty_rivers = $punter_counts[-1] ?: 0;
+      $num_my_rivers = $punter_counts[$punter_id] ?: 0;
+      Message('0;33', 'Occupied rivers: ' . ($num_rivers - $num_empty_rivers) .
+                      ' (' . $num_my_rivers . ') / ' . $num_rivers);
       if (isset($state)) {
         $operation['state'] = $state;
       }
@@ -133,6 +172,20 @@ function Main() {
       } else {
         $state = $result['state'];
         unset($result['state']);
+      }
+      if (!isset($result['claim']['punter']) ||
+          $result['claim']['punter'] != $punter_id) {
+        Error("claim.punter must be set to $punter_id: " .
+              json_encode($result));
+      }
+      $river_id = GetRiverId($result['claim']['source'],
+                             $result['claim']['target']);
+      if (!isset($rivers[$river_id])) {
+        Error("AI claims a non-existing river: $river_id");
+      }
+      if ($rivers[$river_id] != -1) {
+        Error('AI claims an occupied river: ' .
+              "$river_id is occupied by {$rivers[$river_id]}");
       }
       WriteToServer($result);
     } else if (isset($operation['stop'])) {
