@@ -67,7 +67,7 @@ class Game {
     for (int i = 0; i < ais_.size(); ++i) {
       states_[i] = setup(i, ais_.size(), map_json_)["state"];
     }
-    while (true) {
+    for (int i = 0; i < river_claimed_.size(); ++i) {
       for (int i = 0; i < ais_.size(); ++i) {
         auto move_state = gameplay(i, last_moves_, states_[i]);
         auto claim = move_state.first["claim"];
@@ -88,6 +88,10 @@ class Game {
         states_[i] = move_state.second;
       }
     }
+    LOG(INFO) << Json(Json::object{
+                          {"stop", Json::object{{"moves", last_moves_},
+                                                {"score", "<unimplemented>"}}}})
+                     .dump();
   }
 
  private:
