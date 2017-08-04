@@ -11,7 +11,10 @@ mod common;
 mod lib;
 mod ai;
 
+#[cfg(ai = "greedy")]
 use ai::greedy as strategy;
+
+use ai::greedy2 as strategy;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Input {
@@ -174,10 +177,10 @@ fn main() {
 	let input: Input = serde_json::from_str(&input).unwrap();
 	if input.map.is_some() {
 		let out = serde_json::to_string(&setup(input)).unwrap();
-		println!("{}", out);
+		println!("{}:{}", out, out.len());
 	} else if input.move_.is_some() {
 		let out = serde_json::to_string(&play(input)).unwrap();
-		println!("{}", out);
+		println!("{}:{}", out, out.len());
 	} else {
 		panic!("Invalid input: {:?}", input);
 	}
