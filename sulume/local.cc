@@ -65,7 +65,7 @@ class Game {
 
   void start() {
     for (int i = 0; i < ais_.size(); ++i) {
-      states_[i] = setup(i, ais_.size(), map_json_);
+      states_[i] = setup(i, ais_.size(), map_json_)["state"];
     }
     while (true) {
       for (int i = 0; i < ais_.size(); ++i) {
