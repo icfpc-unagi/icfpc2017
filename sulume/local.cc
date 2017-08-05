@@ -140,10 +140,10 @@ class Game {
           punter_river_adj_[i][t_i].push_back(s_i);
         }
         states_[i] = move_state.second;
-      }
-      if (claimed_ >= river_claimed_.size()) {
-        LOG(INFO) << "All rivers claimed; game ends.";
-        break;
+        if (claimed_ >= river_claimed_.size()) {
+          LOG(INFO) << "All rivers claimed; game ends.";
+          break;
+        }
       }
       if (!FLAGS_dot.empty() && FLAGS_dot_all) {
         gen_dot(part_filename(FLAGS_dot, turn));
