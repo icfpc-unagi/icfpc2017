@@ -35,7 +35,8 @@ pub fn play(state: &mut State) -> usize {
 			for u in 0..n {
 				for &(v, e) in &state.graph[u] {
 					if user[e] == !0 && u < v {
-						let w = rng.next_f64();
+						let w = -(rng.next_f64().ln());
+						// let w = rng.next_f64();
 						g.add(u, v, w);
 						g.add(v, u, w);
 					} else if user[e] == state.my {
@@ -44,10 +45,10 @@ pub fn play(state: &mut State) -> usize {
 				}
 			}
 			let (list, dp) = g.solve(state.mines[i]);
-			let mut sum = vec![0; n];
+			let mut sum = vec![0.0; n];
 			for u in list.into_iter().rev() {
 				if dp[u].0 > 0.0 {
-					sum[u] += state.ai.dist[i][u] * state.ai.dist[i][u];
+					sum[u] += (state.ai.dist[i][u] * state.ai.dist[i][u]) as f64;// / (::std::f64::consts::E + dp[u].1 as f64).ln();
 					let v = dp[u].1;
 					sum[v] += sum[u];
 					let e = state.graph[u][state.graph[u].binary_search_by(|&(w, _)| w.cmp(&v)).unwrap()].1;

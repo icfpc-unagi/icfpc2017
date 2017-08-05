@@ -138,6 +138,7 @@ fn play(input: Input) -> Play {
 	let e = strategy::play(&mut state);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.moves.push(Some(e));
+	eprintln!("{}: {} {}", state.my, claim.source, claim.target);
 	Play { claim, state }
 }
 
