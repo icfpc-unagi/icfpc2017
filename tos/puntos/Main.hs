@@ -25,7 +25,8 @@ readTest = do
     print y
 
 
-main = punterOfflineTest randAI1 >> return ()
+main = offline randAI1
+-- main = punterOfflineTest randAI1 >> return ()
 
 punterOnlineTest punter = flip runStateT undefined $
     replicateM_ 5 $ do
