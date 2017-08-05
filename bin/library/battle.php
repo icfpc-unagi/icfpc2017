@@ -21,7 +21,7 @@ foreach ($battle['punter'] as $punter) {
 
 $master = [
     '/binary/local',
-    "--map=/github/map/{$battle['battle_map']}.json"];
+    "--map=/github/map/{$battle['map_key']}.json"];
 foreach ($battle['punter'] as $punter) {
   $master[] = $punter['ai_command'];
 }
