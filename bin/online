@@ -4,10 +4,10 @@ source "$(dirname "${BASH_SOURCE}")"/imos-variables || exit 1
 DEFINE_string name "U Punter" 'Punter name.'
 DEFINE_string host 'punter.inf.ed.ac.uk' 'Host name for punter server.'
 DEFINE_int port 9007 'Host port for punter server.'
-IMOSH_PREDICATE=0 eval "${IMOSH_INIT}"
+IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 PUNTER_NAME="${FLAGS_name}" \
 PUNTER_HOST="${FLAGS_host}" \
 PUNTER_PORT="${FLAGS_port}" \
 PUNTER="$*" \
-    php "$(dirname "${BASH_SOURCE}")/library/online.php"
+    /usr/bin/php "$(dirname "${BASH_SOURCE}")/library/online.php"

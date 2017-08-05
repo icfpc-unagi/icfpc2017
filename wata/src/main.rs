@@ -2,19 +2,17 @@
 
 extern crate serde;
 extern crate serde_json;
-
 #[macro_use]
 extern crate serde_derive;
+
+extern crate rand;
 
 #[macro_use]
 mod common;
 mod lib;
 mod ai;
 
-#[cfg(ai = "greedy")]
-use ai::greedy as strategy;
-
-use ai::greedy2 as strategy;
+use ai::randw as strategy;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Input {
@@ -74,12 +72,13 @@ struct Play {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct State {
+pub struct State {
 	p: usize,
 	my: usize,
-	graph: Vec<Vec<usize>>,
+	es: Vec<(usize, usize)>,
+	graph: Vec<Vec<(usize, usize)>>,
 	mines: Vec<usize>,
-	moves: Vec<Option<(usize, usize)>>,
+	moves: Vec<Option<usize>>,
 	names: Vec<i64>,
 	ai: strategy::AI
 }
@@ -93,12 +92,14 @@ fn setup(input: Input) -> Ready {
 	names.sort();
 	names.dedup();
 	let n = names.len();
+	let mut es = vec![];
 	let mut graph = vec![vec![]; n];
-	for e in map.rivers {
+	for (i, e) in map.rivers.into_iter().enumerate() {
 		let s = names.binary_search(&e.source).unwrap();
 		let t = names.binary_search(&e.target).unwrap();
-		graph[s].push(t);
-		graph[t].push(s);
+		es.push((s, t));
+		graph[s].push((t, i));
+		graph[t].push((s, i));
 	}
 	for i in 0..n {
 		graph[i].sort();
@@ -107,8 +108,9 @@ fn setup(input: Input) -> Ready {
 	mines.sort();
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
-	let ai = strategy::setup(p, my, graph.clone(), mines.clone());
-	Ready { ready: my, state: State { p, my, graph, mines, moves: vec![], names, ai } }
+	let state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
+	let ai = strategy::setup(&state);
+	Ready { ready: my, state: State { ai, .. state } }
 }
 
 fn play(input: Input) -> Play {
@@ -118,7 +120,10 @@ fn play(input: Input) -> Play {
 	let mut state = input.state.unwrap();
 	for m in moves {
 		if let Some(Claim{punter, source, target}) = m.claim {
-			last[punter] = Some((state.names.binary_search(&source).unwrap(), state.names.binary_search(&target).unwrap()));
+			let u = state.names.binary_search(&source).unwrap();
+			let v = state.names.binary_search(&target).unwrap();
+			let e = state.graph[u].binary_search_by(|&(w, _)| w.cmp(&v)).unwrap();
+			last[punter] = Some(state.graph[u][e].1);
 		}
 	}
 	if state.moves.len() == 0 {
@@ -130,10 +135,10 @@ fn play(input: Input) -> Play {
 			state.moves.push(last[(state.my + i) % state.p]);
 		}
 	}
-	let (s, t, ai) = strategy::play(state.p, state.my, state.graph.clone(), state.mines.clone(), state.moves.clone(), state.ai);
-	let claim = Claim { punter: state.my, source: state.names[s], target: state.names[t] };
-	state.moves.push(Some((s, t)));
-	Play { claim, state: State { ai, .. state} }
+	let e = strategy::play(&mut state);
+	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
+	state.moves.push(Some(e));
+	Play { claim, state }
 }
 
 fn self_battle() {
@@ -171,16 +176,16 @@ fn main() {
 	}
 	use std::io::Read;
 	let mut input = String::new();
-	std::io::stdin().read_to_string(&mut input).unwrap();
+	std::io::stdin().read_line(&mut input).unwrap();
 	let p = input.find(':').unwrap() + 1;
 	input = input[p..].to_owned();
 	let input: Input = serde_json::from_str(&input).unwrap();
 	if input.map.is_some() {
 		let out = serde_json::to_string(&setup(input)).unwrap();
-		println!("{}:{}", out, out.len());
+		println!("{}:{}", out.len(), out);
 	} else if input.move_.is_some() {
 		let out = serde_json::to_string(&play(input)).unwrap();
-		println!("{}:{}", out, out.len());
+		println!("{}:{}", out.len(), out);
 	} else {
 		panic!("Invalid input: {:?}", input);
 	}
