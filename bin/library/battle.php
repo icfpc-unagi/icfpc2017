@@ -32,10 +32,29 @@ $ninestream = [
     '--master=' . implode(' ', array_map('escapeshellarg', $master))];
 
 
+function Post($url, $data) {
+  $data = http_build_query($data);
+
+  $context_options = [
+      'http' => [
+          'method' => 'POST',
+          'header'=>
+              "Content-Type: application/x-www-form-urlencoded\r\n" .
+              "Content-Length: " . strlen($data) . "\r\n",
+          'content' => $data]];
+
+  $context = stream_context_create($context_options);
+  $result = file_get_contents($url, false, $context);
+}
+
 function GetScores($command) {
+  global $battle;
   fwrite(STDERR, "Running command: $command\n");
   KeepAlive(1800);
   exec($command, $output, $return);
+  Post("http://proxy.sx9.jp/api/update_punter.php?" .
+       "battle_id={$battle['battle_id']}",
+       ['battle_log_data' => implode("\n", $output)]);
   foreach ($output as $line) {
     $result = json_decode($line, TRUE);
     if (isset($result['scores'])) {
