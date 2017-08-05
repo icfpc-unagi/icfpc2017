@@ -255,7 +255,7 @@ class Game {
 
   void gen_dot(const string& file) {
     string dot;
-    StrAppend(&dot, "graph {\nnode[shape=point]\n");
+    StrAppend(&dot, "graph{\nnode[shape=point]\nedge[fontsize=8]\n");
     StrAppend(&dot, "graph[bb=\"0,0,", FLAGS_scale, ",", FLAGS_scale,
               "\",margin=\"", FLAGS_scale / 10, "\"]\n");
     double min_x = *std::min_element(site_x_.begin(), site_x_.end());
@@ -272,11 +272,18 @@ class Game {
       StrAppend(&dot, site_ids_[m], "[color=red]\n");
     }
     for (int i = 0; i < ais_.size(); ++i) {
+      bool legend_rendered = false;
       for (int j = 0; j < site_ids_.size(); ++j) {
         for (int k : punter_river_adj_[i][j]) {
           if (j < k) {
             StrAppend(&dot, site_ids_[j], "--", site_ids_[k],
-                      "[color=", kColorPalette[i % 8], "]\n");
+                      "[color=", kColorPalette[i % 8],
+                      legend_rendered
+                          ? ""
+                          : StrCat(",label=\"", ais_[i], "\"",
+                                   ",fontcolor=", kColorPalette[i % 8]),
+                      "]\n");
+            legend_rendered = true;
           }
         }
       }
