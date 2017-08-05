@@ -12,6 +12,7 @@
 #include "ninetan/ninestream_util.h"
 #include "strings/numbers.h"
 #include "strings/strcat.h"
+#include "util/gtl/map_util.h"
 
 DEFINE_int32(timeout, 10000, "gameplay timeout in millisecs");
 DEFINE_string(map, "", "map file");
@@ -23,8 +24,6 @@ DEFINE_string(listener, "", "step listener");
 
 using json11::Json;
 using ninetan::StreamUtil;
-
-typedef string id_type;
 
 template <typename T>
 std::pair<T, T> make_sorted_pair(const T& a, const T& b) {
@@ -95,13 +94,15 @@ class Game {
     }
     auto rivers = map_json_["rivers"].array_items();
     for (int i = 0; i < rivers.size(); ++i) {
-      river_to_index_.emplace(make_sorted_pair(rivers[i]["source"].int_value(),
-                                               rivers[i]["target"].int_value()),
-                              i);
+      int s = rivers[i]["source"].int_value();
+      int t = rivers[i]["target"].int_value();
+      CHECK(ContainsKey(site_id_to_index_, s)) << "invalid river";
+      CHECK(ContainsKey(site_id_to_index_, t)) << "invalid river";
+      river_to_index_.emplace(make_sorted_pair(s, t), i);
     }
     river_claimed_.resize(rivers.size());
     for (const auto& mine : map_json_["mines"].array_items()) {
-      mines_.push_back(site_id_to_index_[mine.int_value()]);
+      mines_.push_back(FindOrDie(site_id_to_index_, mine.int_value()));
     }
 
     punter_river_adj_.resize(ais_.size(),
@@ -144,16 +145,16 @@ class Game {
       const auto& claim = move_state["claim"];
       int s = claim["source"].int_value();
       int t = claim["target"].int_value();
-      auto it = river_to_index_.find(make_sorted_pair(s, t));
-      if (it == river_to_index_.end()) {
+      int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
+      if (ri < 0) {
         LOG(ERROR) << "invalid river [" << ais_[i] << "]: " << claim.dump();
         last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
-      } else if (river_claimed_[it->second]) {
+      } else if (river_claimed_[ri]) {
         LOG(ERROR) << "river claimed twice [" << ais_[i]
                    << "]: " << claim.dump();
         last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
       } else {
-        river_claimed_[it->second] = true;
+        river_claimed_[ri] = true;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
         punter_river_adj_[i][s_i].push_back(t_i);
@@ -260,11 +261,7 @@ class Game {
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
       for (int i = 0; i < mines_.size(); ++i) {
-        int bet = -1;
-        auto it = futures_[p].find(mines_[i]);
-        if (it != futures_[p].end()) {
-          bet = it->second;
-        }
+        int bet = FindWithDefault(futures_[p], mines_[i], -1);
         vector<bool> visited(n);
         std::stack<int> st;
         st.push(mines_[i]);
