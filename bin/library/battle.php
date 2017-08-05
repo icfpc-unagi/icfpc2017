@@ -46,8 +46,9 @@ function GetScores($command) {
 }
 
 $scores = GetScores(implode(' ', array_map('escapeshellarg', $ninestream)));
-foreach ($scores['scores'] as $score) {
+foreach ($scores['scores'] as $index => $score) {
+  $punter = $battle['punter'][$index];
   $result = file_get_contents(
       "http://proxy.sx9.jp/api/update_punter.php?" .
-      "punter_id={$score['punter']}&punter_score={$score['score']}");
+      "punter_id={$punter['punter_id']}&punter_score={$score['score']}");
 }
