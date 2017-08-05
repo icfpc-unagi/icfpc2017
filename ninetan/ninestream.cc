@@ -120,7 +120,13 @@ class Stream {
   void Reset() {
     LOG(INFO) << "Stream[" << stream_id() << "]: Closed.";
     pid_ = -1;
+    if (stdin_ > 2) {
+      close(stdin_);
+    }
     stdin_ = -1;
+    if (stdout_ > 2) {
+      close(stdout_);
+    }
     stdout_ = -1;
     stdin_buffer_.clear();
     stdout_buffer_.clear();
