@@ -14,6 +14,7 @@
 DEFINE_string(map, "", "map file");
 DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 DEFINE_string(dot, "", "output dot file");
+DEFINE_double(scale, 3.0, "dot scale");
 DEFINE_bool(futures, true, "enable futures extension");
 
 using json11::Json;
@@ -245,10 +246,12 @@ class Game {
     if (!FLAGS_dot.empty()) {
       string dot;
       StrAppend(&dot, "graph {\nnode[shape=point]\n");
+      StrAppend(&dot, "graph[bb=\"0,0,", FLAGS_scale, ",", FLAGS_scale,
+                      "\",margin=\"", FLAGS_scale / 10, "\"]\n");
       double min_x = *std::min_element(site_x_.begin(), site_x_.end());
       double min_y = *std::min_element(site_y_.begin(), site_y_.end());
       double scale =
-          10.0 /
+          FLAGS_scale /
           std::max(*std::max_element(site_x_.begin(), site_x_.end()) - min_x,
                    *std::max_element(site_y_.begin(), site_y_.end()) - min_y);
       for (int i = 0; i < site_ids_.size(); ++i) {

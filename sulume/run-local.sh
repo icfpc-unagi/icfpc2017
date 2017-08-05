@@ -3,6 +3,7 @@
 source bin/imos-variables || exit 1
 DEFINE_string map 'sample' 'Map'
 DEFINE_string dot '' 'dot'
+DEFINE_int scale 3 'scale'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 args=''
@@ -12,4 +13,4 @@ for arg in "$@"; do
 done
 
 ./ninetan/ninestream --debug \
-    --master="./sulume/local --alsologtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} $args"
+    --master="./sulume/local --alsologtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} $args"
