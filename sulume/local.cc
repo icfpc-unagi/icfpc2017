@@ -102,7 +102,9 @@ class Game {
     }
     river_claimed_.resize(rivers.size());
     for (const auto& mine : map_json_["mines"].array_items()) {
-      mines_.push_back(FindOrDie(site_id_to_index_, mine.int_value()));
+      int m = mine.int_value();
+      CHECK(ContainsKey(site_id_to_index_, m)) << "invalid mine";
+      mines_.push_back(site_id_to_index_[m]);
     }
 
     punter_river_adj_.resize(ais_.size(),
