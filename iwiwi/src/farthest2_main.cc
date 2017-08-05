@@ -27,7 +27,7 @@ pair<pair<int, int>, MyAIState> Play(const MyState &s) {
   int num_edges = game.map.rivers.size();
   int num_remaining_turns = num_edges / game.size - game.turn;  // TODO: more precise
 
-  pair<int, pair<int, int>> bst{-1, {-1, -1}};
+  pair<pair<int, int>, pair<int, int>> bst{{-1, -1}, {-1, -1}};
 
   for (int s : game.map.mines) {
     auto dst1 = SSSP(G, s);
@@ -37,8 +37,9 @@ pair<pair<int, int>, MyAIState> Play(const MyState &s) {
       if (dst2[v].first > num_remaining_turns) continue;  // Unreachable anymore
       if (dst2[v].first == 0) continue;  // Already reaching
 
-      if (dst1[v].first > bst.first) {
-        bst.first = dst1[v].first;
+      pair<int, int> tmp = make_pair(dst1[v].first, - dst2[v].first);
+      if (tmp > bst.first) {
+        bst.first = tmp;
 
         int x = v, y;
         for (;;) {
@@ -50,12 +51,14 @@ pair<pair<int, int>, MyAIState> Play(const MyState &s) {
       }
     }
   }
-  cerr <<
-      "Distance: " << bst.first <<
-      ", Total turns: " << num_edges / game.size <<
-      ", Current turn: " << game.turn << endl;
 
-  if (bst.first != -1) {
+  cerr <<
+      "Real distance: " << bst.first.first << ", " <<
+      "My distance: " << -bst.first.second << ", " <<
+      "Total turns: " << num_edges / game.size << ", " <<
+      "Current turn: " << game.turn << endl;
+
+  if (bst.first.first != -1) {
     return make_pair(bst.second, MyAIState());
   } else {
     return make_pair(RandomRemaining(game), MyAIState());
