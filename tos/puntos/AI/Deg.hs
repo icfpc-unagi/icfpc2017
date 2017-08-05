@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings, DuplicateRecordFields #-}
 
-module AI.Rand1
-  (randAI1) where
+module AI.Deg
+  (ai) where
 
 import Control.Monad.Trans.State
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.List
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import System.Random
 
@@ -14,7 +15,7 @@ import Protocol
 
 data MyState = MyState {
   myid :: PunterId,
-  availableRivers :: [River]
+  sortedRivers :: [River]
   }
   deriving Show
 instance FromJSON MyState where
@@ -24,31 +25,39 @@ instance FromJSON MyState where
 instance ToJSON MyState where
   toJSON (MyState p r) = object ["p" .= p, "r" .= r]
 
-randAI1 :: Punter (StateT MyState IO)
-randAI1 (QueryInit punter punters map_) = do
+
+degrees sites rivers = let
+  zero = M.fromList [(s, 0) | Site s <- sites]
+  add1 x = M.insertWith (+) x 1
+  m = foldr ($) zero $ concat [[add1 s, add1 t] | River s t <- rivers]
+  in (m M.!)
+
+ai :: Punter (StateT MyState IO)
+ai (QueryInit punter punters map_) = do
       let
         p = punter
         r = rivers map_
-      put $ MyState p r
+        d = degrees (sites map_) r
+        score (River s t) = (1 + d s) * (1 + d t)
+        rSorted = reverse $ sortOn score r
+      put $ MyState p rSorted
       return $ AnswerReady p
 
-randAI1 (QueryMove mvs) = do
+ai (QueryMove mvs) = do
       MyState p rOld <- get
       let
         rClaimed = catMaybes $ map riverFromClaim mvs
         rNew = rOld \\ rClaimed
-        k = length rNew
       put $ MyState p rNew
-      if k == 0
-      then
-        return $ AnswerMove $ MovePass p
-      else do
-        ix <- liftIO $ randomRIO (0, k-1)
+      if null rNew
+      then do
         let
-          River s t = rNew !! ix
+          River s t = head rNew
         return $ AnswerMove $ MoveClaim p s t
+      else
+        return $ AnswerMove $ MovePass p
 
-randAI1 (QueryStop mvs scores) = do
+ai (QueryStop mvs scores) = do
       -- liftIO $ print scores
       return AnswerNothing
 

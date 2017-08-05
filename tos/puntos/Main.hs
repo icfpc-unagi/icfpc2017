@@ -12,6 +12,7 @@ import qualified Data.ByteString.Lazy as BL
 import Protocol
 import Offline
 import AI.Rand1 (randAI1)
+import qualified AI.Deg
 
 
 dbgDecode :: (FromJSON a) => BL.ByteString -> IO a
@@ -25,7 +26,8 @@ readTest = do
     print y
 
 
-main = offline randAI1
+main = offline AI.Deg.ai
+-- main = offline randAI1
 -- main = punterOfflineTest randAI1 >> return ()
 
 punterOnlineTest punter = flip runStateT undefined $
