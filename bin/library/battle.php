@@ -31,6 +31,23 @@ $ninestream = [
     '--communicate',
     '--master=' . implode(' ', array_map('escapeshellarg', $master))];
 
-exec(implode(' ', array_map('escapeshellarg', $ninestream)), $output, $return);
 
-print_r($output);
+function GetScores($command) {
+  fwrite(STDERR, "Running command: $command\n");
+  exec($command, $output, $return);
+  foreach ($output as $line) {
+    $result = json_decode($line, TRUE);
+    if (isset($result['scores'])) {
+      return $result;
+    }
+  }
+  fwrite(STDERR, 'Score is not found.');
+  exit(1);
+}
+
+$scores = GetScores(implode(' ', array_map('escapeshellarg', $ninestream)));
+foreach ($scores['scores'] as $score) {
+  $result = file_get_contents(
+      "http://proxy.sx9.jp/api/update_punter.php?" .
+      "punter_id={$score['punter']}&punter_score={$score['score']}");
+}
