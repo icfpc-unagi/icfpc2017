@@ -69,7 +69,7 @@ foreach ($records as $map_id => $map_records) {
   foreach ($map_records as $ai_id => $ai_records) {
     $scores = [];
     foreach ($ai_records as $record) {
-      $scores[] = $record['punter_index'] - $record['punter_rank'];
+      $scores[] = $record['punter_index'] * 0.5 - $record['punter_rank'];
     }
     $score_info =
         ['rank_sum' => array_sum($scores), 'rank_count' => count($scores)];
