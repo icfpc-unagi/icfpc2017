@@ -182,7 +182,7 @@ class Game {
     string send = in.dump();
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
     auto response = StreamUtil::Read(id, timeout);
-    if (code == StreamUtil::DEADLINE_EXCEEDED) {
+    if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
       LOG(WARNING) << "Deadline exceeded: " << cmd;
       return Json();
     }
