@@ -16,7 +16,10 @@ $ais = Database::Select('
     ['limit' => intval($map['map_capacity'])]);
 shuffle($ais);
 
-Database::Command('INSERT INTO battle SET map_id = {map_id}', $map);
+Database::Command('
+    INSERT INTO battle
+    SET map_id = {map_id},
+        battle_lock = NOW() - INTERVAL 1 DAY', $map);
 $battle_id = Database::InsertId();
 if ($battle_id === FALSE) {
   die(json_encode(['error' => 'Failed to insert.']));
