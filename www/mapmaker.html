@@ -17,7 +17,7 @@
 </style>
 
 <body>
-	<h1>mapmaker</h1>
+	<h1>MapMaker</h1>
 	<canvas width="800" height="600" border="1" id="canvas"></canvas>
 	<sidebar style="display:inline-block">
 		<div>click: site
@@ -90,8 +90,6 @@
 				map.mines.push(site.id);
 			}
 			output();
-			// e.shiftKey;
-			// e.altKey;
 			draw();
 		});
 
@@ -107,6 +105,30 @@
 			});
 			return index;
 		}
+
+		canvas.addEventListener('contextmenu', function(e) {
+			var index = findClosestSiteIndex(e.offsetX, e.offsetY);
+			if (index >= 0) {
+				var site = map.sites[index];
+				map.rivers = map.rivers.filter(function(r) {
+					return r.source != site.id && r.target != site.id;
+				});
+				var mi = map.mines.indexOf(site.id);
+				if (mi >= 0) {
+					map.mines.splice(mi, 1);
+					var newMineIndex = {};
+					map.mines.forEach(function(m,i){newMineIndex[m] = i});
+					mineIndex = newMineIndex;
+				}
+				map.sites.splice(index, 1);
+				var newSiteIndex = {};
+				map.sites.forEach(function(s,i){newSiteIndex[s.id] = i});
+				siteIndex = newSiteIndex;
+			}
+			output();
+			draw();
+			e.preventDefault();
+		});
 
 		canvas.addEventListener('mousedown', function(e) {
 			if (e.button == 0) {
@@ -130,7 +152,6 @@
 
 		canvas.addEventListener('mouseup', function(e) {
 			if (e.button == 0) {
-				console.log(e);
 				var target = findClosestSiteIndex(e.offsetX, e.offsetY);
 				if (target >= 0 && dragSource != target) {
 					var river = {
