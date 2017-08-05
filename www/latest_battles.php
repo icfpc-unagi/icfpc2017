@@ -6,7 +6,7 @@ StartPage();
 
 $battles = [];
 foreach (Database::Select(
-    'SELECT * FROM battle ORDER BY battle_created DESC LIMIT 10') as $battle) {
+    'SELECT * FROM battle ORDER BY battle_created DESC LIMIT 100') as $battle) {
   $battles[$battle['battle_id']] = $battle;
 }
 
