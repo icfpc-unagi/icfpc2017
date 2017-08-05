@@ -4,7 +4,7 @@ require_once(dirname(__FILE__) . '/library/api.php');
 
 StartPage();
 
-echo '<h2>ランキング</h2>';
+echo '<h2>順位表</h2>';
 echo '<div class="container">';
 
 Database::Command('
@@ -121,7 +121,16 @@ foreach (array_keys($ais) as $rank => $ai_id) {
       continue;
     }
     $rank = $ai['maps'][$map['map_id']];
-    echo "<td>{$rank['rank']} 位 / {$rank['rank_count']} 回</td>";
+    $background = 'inherit';
+    switch ($rank['rank']) {
+      case 1: $background = '#ffee55'; break;
+      case 2: $background = '#cccccc'; break;
+      case 3: $background = '#bb9955'; break;
+      default: $background = 'inherit'; break;
+    }
+    echo "<td style=\"text-align:center; background: $background\">";
+    echo "{$rank['rank']} 位 / {$rank['rank_count']} 回<br>";
+    echo sprintf("%+.2f", $rank['rank_sum'] / $rank['rank_count']) . "</td>";
   }
   echo "</tr>\n";
 }
