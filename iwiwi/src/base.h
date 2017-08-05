@@ -45,6 +45,7 @@ using namespace std;
 
 struct Site {
   int id;
+  double x, y;
   bool is_mine;
 
   template<class Archive> void serialize(Archive& ar, unsigned int ver) {

@@ -8,7 +8,9 @@ Map ConstructMap(const json11::Json &j) {
   rep (i, sites.size()) {
     auto s = sites[i];
     int id = s["id"].int_value();
-    ma.sites.emplace_back(Site{id, false});
+    double x = s["x"].number_value();
+    double y = s["y"].number_value();
+    ma.sites.emplace_back(Site{id, x, y, false});
   }
 
   map<int, int> id_to_idx = ConstructIdToIndexMap(ma);
