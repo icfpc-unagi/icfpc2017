@@ -12,7 +12,9 @@ mod common;
 mod lib;
 mod ai;
 
-const DEFAULT_AI: &'static str = "randw";
+global!(STIME: std::time::SystemTime = std::time::SystemTime::now());
+
+const DEFAULT_AI: &'static str = "lightning";
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Input {
@@ -115,6 +117,8 @@ fn setup(input: Input, ai: &str) -> Ready {
 		ai::randw::setup(&mut state);
 	} else if ai == "obst" {
 		ai::obst::setup(&mut state);
+	} else if ai == "lightning" {
+		ai::lightning::setup(&mut state);
 	} else {
 		panic!("unknown ai: {}", ai);
 	}
@@ -149,6 +153,8 @@ fn play(input: Input, ai: &str) -> Play {
 		ai::randw::play(&mut state)
 	} else if ai == "obst" {
 		ai::obst::play(&mut state)
+	} else if ai == "lightning" {
+		ai::lightning::play(&mut state)
 	} else {
 		panic!("unknown ai: {}", ai);
 	};
@@ -159,7 +165,7 @@ fn play(input: Input, ai: &str) -> Play {
 }
 
 fn main() {
-	let t = ::std::time::SystemTime::now();
+	*STIME() = ::std::time::SystemTime::now();
 	use std::io::Read;
 	let mut input = String::new();
 	std::io::stdin().read_line(&mut input).unwrap();
@@ -175,7 +181,7 @@ fn main() {
 	} else {
 		panic!("Invalid input: {:?}", input);
 	}
-	let d = t.elapsed().unwrap();
+	let d = STIME().elapsed().unwrap();
 	let s = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
 	eprintln!("time: {:.3}", s);
 }
