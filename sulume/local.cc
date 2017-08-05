@@ -13,7 +13,7 @@
 #include "strings/numbers.h"
 #include "strings/strcat.h"
 
-DEFINE_int32(timeout, 10000, "timeout in millisecs");
+DEFINE_int32(timeout, 10000, "gameplay timeout in millisecs");
 DEFINE_string(map, "", "map file");
 DEFINE_string(dot, "", "output dot file");
 DEFINE_bool(dot_all, false, "output dot for all steps");
@@ -177,11 +177,16 @@ class Game {
   }
 
  private:
-  static Json io_once(const string& cmd, const Json& in) {
+  static Json io_once(const string& cmd, const Json& in, int timeout) {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
     string send = in.dump();
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
-    string recv = GetResponseOrDie(StreamUtil::Read(id, FLAGS_timeout)).data;
+    auto response = StreamUtil::Read(id, timeout);
+    if (code == StreamUtil::DEADLINE_EXCEEDED) {
+      LOG(WARNING) << "Deadline exceeded: " << cmd;
+      return Json();
+    }
+    string recv = GetResponseOrDie(response).data;
     GetResponseOrDie(StreamUtil::Kill(id));
     size_t i = recv.find(':');
     CHECK_NE(i, string::npos) << "missing prefix: " << recv;
@@ -205,7 +210,7 @@ class Game {
   Json setup(int p, int total, Json map_json) {
     // S → P {"punter" : p, "punters" : n, "map" : map}
     // P → S {"ready" : p, "state" : state}
-    Json got = io_once(ais_[p], setup_json(p, total, map_json));
+    Json got = io_once(ais_[p], setup_json(p, total, map_json), 10000);
     CHECK_EQ(got["ready"].int_value(), p);
     return got;
   }
@@ -216,7 +221,7 @@ class Game {
     // P → S {"ready" : p, "state" : state}
     Json send = Json::object{{"move", Json::object{{"moves", moves}}},
                              {"state", state}};
-    Json got = io_once(ais_[p], send);
+    Json got = io_once(ais_[p], send, FLAGS_timeout);
     const auto& claim = got["claim"];
     if (claim["punter"].int_value() != p || !claim["source"].is_number() ||
         !claim["target"].is_number()) {
