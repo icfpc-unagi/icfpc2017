@@ -11,6 +11,7 @@
 #include "strings/numbers.h"
 #include "strings/strcat.h"
 
+DEFINE_int32(timeout, 10000, "timeout in millisecs");
 DEFINE_string(map, "", "map file");
 DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 DEFINE_string(dot, "", "output dot file");
@@ -27,7 +28,7 @@ std::pair<T, T> make_sorted_pair(const T& a, const T& b) {
   return a < b ? make_pair(a, b) : make_pair(b, a);
 }
 
-constexpr char* const kColorPalette[] = {
+const char* const kColorPalette[] = {
     "blue", "green", "brown", "pink", "cyan", "violet", "gold", "orange",
 };
 
@@ -146,7 +147,7 @@ class Game {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
     string send = in.dump();
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
-    string recv = GetResponseOrDie(StreamUtil::Read(id, 10000)).data;
+    string recv = GetResponseOrDie(StreamUtil::Read(id, FLAGS_timeout)).data;
     GetResponseOrDie(StreamUtil::Kill(id));
     size_t i = recv.find(':');
     CHECK_NE(i, string::npos) << "missing prefix: " << recv;
@@ -247,7 +248,7 @@ class Game {
       string dot;
       StrAppend(&dot, "graph {\nnode[shape=point]\n");
       StrAppend(&dot, "graph[bb=\"0,0,", FLAGS_scale, ",", FLAGS_scale,
-                      "\",margin=\"", FLAGS_scale / 10, "\"]\n");
+                "\",margin=\"", FLAGS_scale / 10, "\"]\n");
       double min_x = *std::min_element(site_x_.begin(), site_x_.end());
       double min_y = *std::min_element(site_y_.begin(), site_y_.end());
       double scale =
