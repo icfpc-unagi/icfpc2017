@@ -1,61 +1,33 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables,
-  DuplicateRecordFields #-}
-
 import Control.Applicative
-import Control.Monad
-import Control.Monad.Trans.State
-import Control.Monad.IO.Class
-import Data.Aeson
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
+import Data.Monoid
+import Options.Applicative
 
-import Protocol
-import Offline
-import AI.Rand1 (randAI1)
-import qualified AI.Deg
+import qualified AI.Rand1 (randAI1)
+import qualified AI.Deg (ai)
 
+import Offline (offline)
 
-dbgDecode :: (FromJSON a) => BL.ByteString -> IO a
-dbgDecode = either fail return . eitherDecode
+data Args = Args {
+  aiStr :: String
+  }
 
-readTest = do
-  x :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  print x
-  replicateM_ 4 $ do
-    y :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
-    print y
+args = Args 
+  <$> strOption (long "ai" <> short 'a' <> metavar "AI")
 
+main :: IO ()
+main = run =<< execParser opts
+  where
+    opts = info (args <**> helper)
+      ( fullDesc
+     <> progDesc "Run AI"
+     <> header "" )
 
-main = offline AI.Deg.ai
--- main = offline randAI1
--- main = punterOfflineTest randAI1 >> return ()
-
-punterOnlineTest punter = flip runStateT undefined $
-    replicateM_ 5 $ do
-  input :: Query <- liftIO $ dbgDecode =<< BL.fromStrict <$> B.getLine
-  liftIO $ print input
-  output <- punter input
-  liftIO $ print output
-  s <- get
-  liftIO $ print s
-  
-
-punterOfflineTest punter =
-  replicateM 5 $ offline punter
-{-
-punterOfflineTest punter = do
-  q :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  (a, s) <- flip runStateT undefined $ punter q
-  encodeWithState s a
+run :: Args -> IO ()
+run (Args aiStr) = do
   let
-    (QueryInit p _ _)  = x
-    a = AnswerReady p s
-    aj = encode a
-  BL.putStr aj
-  putStrLn ""
+    ai = lookup aiStr $ [
+      ("rand1", offline AI.Rand1.randAI1),
+      ("deg", offline AI.Deg.ai)
+      ]
+  maybe (error $ "not found AI name: " ++ aiStr) id ai
 
-  y :: Query <- dbgDecode =<< BL.fromStrict <$> B.getLine
-  (mv, s2) <- flip runStateT s $ punter y
-  print mv
-  print s2
--}
