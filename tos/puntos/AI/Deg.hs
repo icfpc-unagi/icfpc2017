@@ -50,12 +50,12 @@ ai (QueryMove mvs) = do
         rNew = rOld \\ rClaimed
       put $ MyState p rNew
       if null rNew
-      then do
+      then
+        return $ AnswerMove $ MovePass p
+      else do
         let
           River s t = head rNew
         return $ AnswerMove $ MoveClaim p s t
-      else
-        return $ AnswerMove $ MovePass p
 
 ai (QueryStop mvs scores) = do
       -- liftIO $ print scores
