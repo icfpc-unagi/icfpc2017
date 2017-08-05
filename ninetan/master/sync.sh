@@ -23,6 +23,7 @@ SERVICES=(
     ninetan-dropbox
     ninetan-forward-github
     ninetan-forward-http
+    ninetan-forward-mysql
     ninetan-forward-ssh
     ninetan-poll
 )
