@@ -29,8 +29,8 @@ foreach ($battle['punter'] as $punter) {
 $ninestream = [
     '/binary/ninestream',
     '--communicate',
-    '--master=' . implode(' ', array_map('escapeshellcmd', $master))];
+    '--master=' . implode(' ', array_map('escapeshellarg', $master))];
 
-exec(implode(' ', array_map('escapeshellcmd', $ninestream)), $output, $return);
+exec(implode(' ', array_map('escapeshellarg', $ninestream)), $output, $return);
 
 print_r($output);
