@@ -14,6 +14,10 @@
 	width: 200px;
 	height: 400px;
 }
+
+.warn {
+	box-shadow: red 0 0 10px;
+}
 </style>
 
 <body>
@@ -23,7 +27,7 @@
 		<div>click: site
 			<br> meta+click: mine
 			<br> drag: river</div>
-		<textarea id="textarea" readonly="readonly"></textarea>
+		<textarea id="textarea"></textarea>
 	</sidebar>
 	<script>
 	(function() {
@@ -78,6 +82,29 @@
 
 		function output() {
 			textarea.value = JSON.stringify(map);
+			textarea.classList.remove('warn');
+		}
+
+		function findClosestSiteIndex(x, y) {
+			var index = -1;
+			var min = Infinity;
+			map.sites.forEach(function(site, i) {
+				var norm = Math.pow(site.x - x, 2) + Math.pow(site.y - y, 2)
+				if (norm < min) {
+					index = i;
+					min = norm;
+				}
+			});
+			return index;
+		}
+
+		function refreshIndices() {
+			var newMineIndex = {};
+			map.mines.forEach(function(m, i) { newMineIndex[m] = i });
+			mineIndex = newMineIndex;
+			var newSiteIndex = {};
+			map.sites.forEach(function(s, i) { newSiteIndex[s.id] = i });
+			siteIndex = newSiteIndex;
 		}
 
 		canvas.addEventListener('click', function(e) {
@@ -93,19 +120,6 @@
 			draw();
 		});
 
-		function findClosestSiteIndex(x, y) {
-			var index = -1;
-			var min = Infinity;
-			map.sites.forEach(function(site, i) {
-				var norm = Math.pow(site.x - x, 2) + Math.pow(site.y - y, 2)
-				if (norm < min) {
-					index = i;
-					min = norm;
-				}
-			});
-			return index;
-		}
-
 		canvas.addEventListener('contextmenu', function(e) {
 			var index = findClosestSiteIndex(e.offsetX, e.offsetY);
 			if (index >= 0) {
@@ -114,16 +128,9 @@
 					return r.source != site.id && r.target != site.id;
 				});
 				var mi = map.mines.indexOf(site.id);
-				if (mi >= 0) {
-					map.mines.splice(mi, 1);
-					var newMineIndex = {};
-					map.mines.forEach(function(m,i){newMineIndex[m] = i});
-					mineIndex = newMineIndex;
-				}
+				if (mi >= 0) map.mines.splice(mi, 1);
 				map.sites.splice(index, 1);
-				var newSiteIndex = {};
-				map.sites.forEach(function(s,i){newSiteIndex[s.id] = i});
-				siteIndex = newSiteIndex;
+				refreshIndices();
 			}
 			output();
 			draw();
@@ -150,6 +157,10 @@
 			draw();
 		});
 
+		canvas.addEventListener('mouseleave', function(e) {
+			active = -1;
+		});
+
 		canvas.addEventListener('mouseup', function(e) {
 			if (e.button == 0) {
 				var target = findClosestSiteIndex(e.offsetX, e.offsetY);
@@ -174,6 +185,21 @@
 				e.preventDefault();
 			}
 		}, true);
+
+		textarea.addEventListener('change', function(e) {
+			try {
+				var json = JSON.parse(e.target.value);
+				if (Array.isArray(json['mines']) && Array.isArray(json['rivers']) && Array.isArray(json['sites'])) {
+					map = json;
+					refreshIndices();
+					draw();
+				}
+				e.target.classList.remove('warn');
+			} catch (error) {
+				console.warn(error);
+				e.target.classList.add('warn');
+			}
+		});
 
 		draw();
 		output();
