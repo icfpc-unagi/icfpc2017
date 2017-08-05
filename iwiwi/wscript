@@ -18,7 +18,7 @@ def configure(conf):
   conf.load('compiler_cxx')
   conf.load('unittest_gtest')
   conf.env.CXXFLAGS += ['-Wall', '-g', '-std=c++0x', '-pthread']
-  conf.env.LINKFLAGS += ['-pthread', '-lboost_serialization']
+  conf.env.LINKFLAGS += ['-pthread']
 
   if conf.options.build_debug:
     conf.env.CXXFLAGS += ['-O0', '-D_GLIBCXX_DEBUG']
@@ -62,7 +62,8 @@ def build(bld):
       name     = n,
       source   = cc,
       target   = n,
-      use      = ['gflags', 'jlog','json11',  'icfpc2017_iwiwi'],
+      use      = ['gflags', 'jlog','json11', 'icfpc2017_iwiwi'],
+      lib      = ['boost_serialization'],
       includes = ['src', '3rd_party'])
 
   bld.program(
