@@ -79,6 +79,7 @@ class Stream {
 
   ~Stream() {
     if (pid_ > 0) {
+      LOG(INFO) << "Stream[" << stream_id() << "]: Killing pid: " << pid_;
       kill(pid_, SIGKILL);
     }
   }
@@ -106,20 +107,37 @@ class Stream {
     if (pid_ <= 0) { return; }
     do {
       int status;
-      waitpid(pid_, &status, WNOHANG);
+      if (waitpid(pid_, &status, WNOHANG) < 0) {
+        LOG(INFO) << "Stream[" << stream_id() << "]: Failed to wait PID: "
+                  << pid_ << ": " << strerror(errno);
+      }
       if (WIFEXITED(status) || WIFSIGNALED(status)) {
+        LOG(INFO) << "Stream[" << stream_id() << "]: Already terminated.";
         Reset();
         return;
       }
     } while (WallTimer::GetTimeInMicroSeconds() < deadline_in_micros);
-    LOG(INFO) << "Stream[" << stream_id() << "]: Killing...";
-    kill(pid_, SIGKILL);
+    LOG(INFO) << "Stream[" << stream_id() << "]: Killing pid: " << pid_;
+    if (kill(pid_, SIGKILL) != 0) {
+      LOG(INFO) << "Stream[" << stream_id() << "]: Failed to kill: "
+                << strerror(errno);
+    }
+    int status;
+    if (waitpid(pid_, &status, 0) < 0) {
+      LOG(INFO) << "Stream[" << stream_id() << "]: Failed to wait PID: "
+                << pid_ << ": " << strerror(errno);
+    }
+    if (!WIFEXITED(status) && !WIFSIGNALED(status)) {
+      LOG(INFO) << "Stream[" << stream_id() << "]: Failed to terminate: "
+                << pid_;
+    }
     Reset();
   }
 
   void Reset() {
     LOG(INFO) << "Stream[" << stream_id() << "]: Closed.";
     pid_ = -1;
+    // TODO(imos)
     if (stdin_ > 2) {
       close(stdin_);
     }
@@ -302,6 +320,7 @@ class Stream {
       }
       LOG(FATAL) << "Failed to run command: " << command_;
     }
+    LOG(INFO) << "Child process' PID: " << pid_;
     close(pipe_p2c[READ]);
     close(pipe_c2p[WRITE]);
     stdin_ = pipe_p2c[WRITE];

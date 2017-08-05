@@ -20,7 +20,7 @@ if (Database::AffectedRows() != 1) {
 }
 
 $battle = Database::SelectRow(
-    'SELECT * FROM battle WHERE battle_id = @battle_id');
+    'SELECT * FROM battle NATURAL JOIN map WHERE battle_id = @battle_id');
 $battle['punter'] =
     Database::Select('SELECT * FROM punter NATURAL JOIN ai WHERE battle_id = @battle_id');
 die(json_encode($battle));
