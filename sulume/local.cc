@@ -13,11 +13,11 @@
 
 DEFINE_int32(timeout, 10000, "timeout in millisecs");
 DEFINE_string(map, "", "map file");
-DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 DEFINE_string(dot, "", "output dot file");
 DEFINE_bool(dot_all, false, "output dot for all steps");
-DEFINE_double(scale, 3.0, "dot scale");
+DEFINE_double(scale, 5.0, "dot scale");
 DEFINE_bool(futures, true, "enable futures extension");
+DEFINE_string(listener, "", "step listener");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -43,6 +43,7 @@ string part_filename(const string& file, int part) {
 
 class Game {
   vector<string> ais_;
+  string listener_id = "";
   // Map = {"sites" : [Site], "rivers" : [River], "mines" : [SiteId]}
   // Site = {"id" : SiteId}
   // River = {"source" : SiteId, "target" : SiteId}
@@ -108,38 +109,48 @@ class Game {
           Json::object{{"pass", Json::object{{"punter", 1}}}});
     }
     claimed_ = 0;
+    if (!FLAGS_listener.empty()) {
+      listener_id =
+          GetResponseOrDie(StreamUtil::Run(1, FLAGS_listener)).stream_ids[0];
+    }
   }
 
   void start() {
     for (int i = 0; i < ais_.size(); ++i) {
       states_[i] = setup(i, ais_.size(), map_json_)["state"];
     }
+    if (!listener_id.empty()) {
+      GetResponseOrDie(StreamUtil::Write(
+          listener_id, setup_json(-1, ais_.size(), map_json_).dump()));
+    }
     for (int turn = 0; turn < river_to_index_.size(); ++turn) {
       int i = turn % ais_.size();
       auto move_state = gameplay(i, last_moves_, states_[i]);
-      auto claim = move_state.first["claim"];
+      auto claim = move_state["claim"];
       int64 s = claim["source"].int_value();
       int64 t = claim["target"].int_value();
       auto it = river_to_index_.find(make_sorted_pair(s, t));
       if (it == river_to_index_.end()) {
-        LOG(ERROR) << ais_[i] << ": " << claim.dump();
-        continue;
-      }
-      int river_index = it->second;
-      if (river_claimed_[river_index]) {
-        LOG(WARNING) << "river claimed twice: " << claim.dump();
+        LOG(ERROR) << "invalid river [" << ais_[i] << "]: " << claim.dump();
+        last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
+      } else if (river_claimed_[it->second]) {
+        LOG(ERROR) << "river claimed twice [" << ais_[i]
+                   << "]: " << claim.dump();
         last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
       } else {
-        river_claimed_[river_index] = true;
-        last_moves_[i] = move_state.first;
+        river_claimed_[it->second] = true;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
         punter_river_adj_[i][s_i].push_back(t_i);
         punter_river_adj_[i][t_i].push_back(s_i);
+        last_moves_[i] = Json::object{{"claim", move_state["claim"]}};
       }
-      states_[i] = move_state.second;
+      states_[i] = move_state["state"];
       if (!FLAGS_dot.empty() && FLAGS_dot_all) {
         gen_dot(part_filename(FLAGS_dot, turn));
+      }
+      if (!listener_id.empty()) {
+        GetResponseOrDie(StreamUtil::Write(listener_id, last_moves_[i].dump()));
       }
     }
     LOG(INFO) << "game ends.";
@@ -167,17 +178,19 @@ class Game {
     return out;
   }
 
-  // state
-  Json setup(int id, int total, Json map_json) {
-    // S → P {"punter" : p, "punters" : n, "map" : map}
-    // P → S {"ready" : p, "state" : state}
-    int p = id;
-    Json send = Json::object{
+  static Json setup_json(int p, int total, Json map_json) {
+    return Json::object{
         {"punter", p},
         {"punters", total},
         {"map", map_json},
         {"settings", FLAGS_futures ? Json::object{{"futures", true}} : Json()}};
-    Json got = io_once(ais_[id], send);
+  }
+
+  // state
+  Json setup(int p, int total, Json map_json) {
+    // S → P {"punter" : p, "punters" : n, "map" : map}
+    // P → S {"ready" : p, "state" : state}
+    Json got = io_once(ais_[p], setup_json(p, total, map_json));
     CHECK_EQ(got["ready"].int_value(), p);
     if (FLAGS_futures) {
       for (const auto& future : got["futures"].array_items()) {
@@ -187,22 +200,21 @@ class Game {
     return got;
   }
 
-  // move, state
-  pair<Json, Json> gameplay(int id, const Json::array& moves,
-                            const Json& state) {
+  // move
+  Json gameplay(int p, const Json::array& moves, const Json& state) {
     // S → P {"punter" : p, "punters" : n, "map" : map}
     // P → S {"ready" : p, "state" : state}
     Json send = Json::object{{"move", Json::object{{"moves", moves}}},
                              {"state", state}};
-    Json got = io_once(ais_[id], send);
+    Json got = io_once(ais_[p], send);
     const auto& claim = got["claim"];
-    if (claim["punter"].int_value() != id || !claim["source"].is_number() ||
+    if (claim["punter"].int_value() != p || !claim["source"].is_number() ||
         !claim["target"].is_number()) {
-      LOG(ERROR) << ais_[id] << " invalid claim: " << claim.dump();
-      return pair<Json, Json>{
-          Json::object{{"pass", Json::object{{"punter", id}}}}, got["state"]};
+      LOG(ERROR) << ais_[p] << " invalid claim: " << claim.dump();
+      return Json::object{{"pass", Json::object{{"punter", p}}},
+                          {"state", got["state"]}};
     }
-    return make_pair(Json(Json::object{{"claim", claim}}), got["state"]);
+    return got;
   }
 
   void score() {
@@ -222,6 +234,7 @@ class Game {
         }
       }
     }
+    Json::array scores;
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
       for (int m : mines_) {
@@ -250,12 +263,20 @@ class Game {
         }
       }
       LOG(INFO) << ais_[p] << ": score=" << score;
+      scores.emplace_back(Json::object{
+          {"punter", p}, {"score", score},
+      });
+    }
+    Json final = Json::object{{"scores", scores}};
+    for (const auto& id :
+         GetResponseOrDie(StreamUtil::List("communicator")).stream_ids) {
+      GetResponseOrDie(StreamUtil::Write(id, final.dump()));
     }
   }
 
   void gen_dot(const string& file) {
     string dot;
-    StrAppend(&dot, "graph {\nnode[shape=point]\n");
+    StrAppend(&dot, "graph{\nnode[shape=point]\nedge[fontsize=8]\n");
     StrAppend(&dot, "graph[bb=\"0,0,", FLAGS_scale, ",", FLAGS_scale,
               "\",margin=\"", FLAGS_scale / 10, "\"]\n");
     double min_x = *std::min_element(site_x_.begin(), site_x_.end());
@@ -272,11 +293,18 @@ class Game {
       StrAppend(&dot, site_ids_[m], "[color=red]\n");
     }
     for (int i = 0; i < ais_.size(); ++i) {
+      bool legend_rendered = false;
       for (int j = 0; j < site_ids_.size(); ++j) {
         for (int k : punter_river_adj_[i][j]) {
           if (j < k) {
             StrAppend(&dot, site_ids_[j], "--", site_ids_[k],
-                      "[color=", kColorPalette[i % 8], "]\n");
+                      "[color=", kColorPalette[i % 8],
+                      legend_rendered
+                          ? ""
+                          : StrCat(",label=\"", ais_[i], "\"",
+                                   ",fontcolor=", kColorPalette[i % 8]),
+                      "]\n");
+            legend_rendered = true;
           }
         }
       }
@@ -297,7 +325,6 @@ int main(int argc, char** argv) {
   }
 
   vector<string> ais;
-  if (!FLAGS_ai.empty()) ais.push_back(FLAGS_ai);
   for (int i = 1; i < argc; ++i) ais.push_back(argv[i]);
 
   Game game(ais);
