@@ -205,19 +205,19 @@ function RenderPage($buffer) {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="snapshot.php">🐍 Team Unagi</a>
+          <a class="navbar-brand" href="./">🐍 Team Unagi</a>
         </div>
         <div class="collapse navbar-collapse" id="navbar-collapse">
           <ul class="nav navbar-nav">
             
             <li class="False">
-              <a href="snapshot.php">
-                Leaderboard
+              <a href="./">
+                Ranking
               </a>
             </li>
             <li class="False">
-              <a href="list.php">
-                Snapshots
+              <a href="latest_battles.php">
+                Battles
               </a>
             </li>
           </ul>
