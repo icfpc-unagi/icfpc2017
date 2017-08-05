@@ -5,7 +5,8 @@ set -e -u
 rsync -a --delete --exclude='.git' --delete-excluded master:~/github/ ~/github/
 rsync -a --delete --exclude='.git' --delete-excluded master:~/Dropbox/ICFPC2017/ ~/Dropbox/ICFPC2017/
 sudo mkdir -p /binary
-sudo rsync -a --delete --exclude='.git' --delete-excluded master:/binary/ /binary/
+sudo chown ninetan:ninetan /binary
+rsync -a --delete master:/binary/ /binary/
 
 if ! mountpoint /dropbox; then
   sudo mkdir -p /dropbox
