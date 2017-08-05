@@ -79,6 +79,7 @@ vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
   return dst;
 }
 
+/*
 UnionFind MergeSameDistanceLayersPlayer
 (const Graph &g, const vector<pair<int, int>> &dst, int rank) {
   UnionFind uf(g.size());
@@ -92,3 +93,4 @@ UnionFind MergeSameDistanceLayersPlayer
   }
   return uf;
 }
+*/

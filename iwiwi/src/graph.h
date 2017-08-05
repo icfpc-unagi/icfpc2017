@@ -13,6 +13,7 @@ vector<pair<int, int>> SSSP(const Graph &g, int s);
 vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank);
 
 
+/*
 struct UnionFind {
   vector<int> par, siz;
 
@@ -41,3 +42,4 @@ struct UnionFind {
     return siz[v];
   }
 };
+*/
