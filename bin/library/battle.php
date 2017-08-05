@@ -1,7 +1,14 @@
 <?php
 
+$keep_alive = 0;
+
 function KeepAlive($interval = 10) {
-  global $battle;
+  global $battle, $keep_alive;
+  if (time() + $interval * 0.5 < $keep_alive) {
+    return;
+  }
+  $keep_alive = time() + $interval;
+
   $result = file_get_contents(
       "http://proxy.sx9.jp/api/keep_alive_battle.php?battle_id={$battle['battle_id']}&interval=$interval");
 }
@@ -50,12 +57,18 @@ function Post($url, $data) {
 function GetScores($command) {
   global $battle;
   fwrite(STDERR, "Running command: $command\n");
-  KeepAlive(1800);
-  exec($command, $output, $return);
+  KeepAlive(60);
+  $handle = popen($command, 'r');
+  $output = '';
+  while (!feof($handle) && ($buffer = fread($handle, 1024)) !== FALSE) {
+    $output .= $buffer;
+    KeepAlive(60);
+  }
+  pclose($handle);
   Post("http://proxy.sx9.jp/api/add_battle_log.php?" .
        "battle_id={$battle['battle_id']}",
-       ['battle_log_data' => implode("\n", $output)]);
-  foreach ($output as $line) {
+       ['battle_log_data' => $output]);
+  foreach (explode("\n", $output) as $line) {
     $result = json_decode($line, TRUE);
     if (isset($result['scores'])) {
       return $result;
