@@ -4,19 +4,23 @@ module Offline
   (offline)
   where
 
+import Control.Monad.IO.Class
 import Control.Monad.Trans.State
 import Data.Aeson
 -- import qualified Data.ByteString as B
 -- import qualified Data.ByteString.Lazy as BL
 import Data.Monoid
 
+import Protocol
 import qualified NColon
 
--- offline :: (MonadState s m) => Punter m -> IO ()
+offline
+  :: (FromJSON s, ToJSON s, MonadIO m) =>
+     (Punter (StateT s m)) -> m ()
 offline punter = do
-  WithState s0 q <- either fail return . eitherDecode =<< NColon.get
+  WithState s0 q <- liftIO $ either fail return . eitherDecode =<< NColon.get
   (a, s1) <- runStateT (punter q) $ maybe undefined id s0
-  NColon.put $ encode $ WithState (Just s1) a
+  liftIO $ NColon.put $ encode $ WithState (Just s1) a
 
 
 data WithState s x = WithState (Maybe s) x

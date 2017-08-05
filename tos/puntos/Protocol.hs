@@ -122,7 +122,7 @@ instance FromJSON Map_ where
     <*> v .: "rivers"
     <*> v .: "mines"
 
-data Site = Site {id :: SiteId}
+data Site = Site {id_ :: SiteId}
   deriving Show
 instance FromJSON Site where
   parseJSON = withObject "Site" $ \ v -> Site
