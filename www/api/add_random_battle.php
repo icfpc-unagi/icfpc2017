@@ -2,6 +2,8 @@
 
 require_once(dirname(__FILE__) . '/../library/api.php');
 
+exit();
+
 $map = Database::SelectRow('
     SELECT map_id, map_capacity, RAND() / map_weight AS map_weight
     FROM map ORDER BY map_weight LIMIT 1');

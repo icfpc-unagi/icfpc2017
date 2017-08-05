@@ -10,7 +10,7 @@ echo '<div class="container">';
 Database::Command('
     CREATE TEMPORARY TABLE candidate_battle
     SELECT battle_id
-    FROM battle ORDER BY battle_created DESC LIMIT 1000');
+    FROM battle ORDER BY battle_created DESC LIMIT 3000');
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_ai
