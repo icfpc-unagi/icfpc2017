@@ -13,7 +13,6 @@ if (!isset($battle['battle_id'])) {
   file_get_contents('http://proxy.sx9.jp/api/add_random_battle.php');
   exit();
 }
-KeepAlive();
 
 $args = [];
 foreach ($battle['punter'] as $punter) {
@@ -35,6 +34,7 @@ $ninestream = [
 
 function GetScores($command) {
   fwrite(STDERR, "Running command: $command\n");
+  KeepAlive(1800);
   exec($command, $output, $return);
   foreach ($output as $line) {
     $result = json_decode($line, TRUE);
