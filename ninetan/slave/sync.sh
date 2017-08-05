@@ -1,5 +1,7 @@
 #!/bin/bash
 
+sleep 10
+
 set -e -u
 
 rsync -a --delete --exclude='.git' --delete-excluded master:~/github/ ~/github/
@@ -19,5 +21,3 @@ if ! mountpoint /github; then
   sudo chmod 0755 /github
   sudo mount --rbind /home/ninetan/github /github
 fi
-
-sleep 10
