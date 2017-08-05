@@ -17,7 +17,10 @@ Database::Command('
     SELECT DISTINCT ai_id
     FROM candidate_battle NATURAL JOIN punter');
 
-$maps = Database::Select('SELECT * FROM map');
+$maps = [];
+foreach (Database::Select('SELECT * FROM map') as $map) {
+  $maps[$map['map_id']] = $map;
+}
 
 $battles = [];
 foreach (Database::Select(
@@ -66,10 +69,12 @@ if ($num_invalids > 0) {
 
 $average_scores = [];
 foreach ($records as $map_id => $map_records) {
+  $map_capacity = intval($maps[$map_id]['map_capacity']);
   foreach ($map_records as $ai_id => $ai_records) {
     $scores = [];
     foreach ($ai_records as $record) {
-      $scores[] = $record['punter_index'] * 0.5 - $record['punter_rank'];
+      $scores[] = ($record['punter_index'] - ($map_capacity - 1) / 2) * 0.5 +
+                  ($record['punter_rank'] - ($map_capacity - 1) / 2) * -1;
     }
     $score_info =
         ['rank_sum' => array_sum($scores), 'rank_count' => count($scores)];
