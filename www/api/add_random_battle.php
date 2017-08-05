@@ -8,9 +8,13 @@ $map = Database::SelectRow('
 
 $ais = Database::Select('
     SELECT ai_id, ai_key, RAND() / ai_weight AS ai_weight
-    FROM (SELECT * FROM ai UNION ALL SELECT * FROM ai) AS ai
+    FROM (SELECT * FROM ai UNION ALL
+          SELECT * FROM ai UNION ALL
+          SELECT * FROM ai UNION ALL
+          SELECT * FROM ai) AS ai
     ORDER BY ai_weight LIMIT {limit}',
     ['limit' => intval($map['map_capacity'])]);
+shuffle($ais);
 
 Database::Command('INSERT INTO battle SET map_id = {map_id}', $map);
 $battle_id = Database::InsertId();
