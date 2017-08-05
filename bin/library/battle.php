@@ -52,7 +52,7 @@ function GetScores($command) {
   fwrite(STDERR, "Running command: $command\n");
   KeepAlive(1800);
   exec($command, $output, $return);
-  Post("http://proxy.sx9.jp/api/update_punter.php?" .
+  Post("http://proxy.sx9.jp/api/add_battle_log.php?" .
        "battle_id={$battle['battle_id']}",
        ['battle_log_data' => implode("\n", $output)]);
   foreach ($output as $line) {
