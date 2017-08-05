@@ -54,7 +54,7 @@ class Game {
   vector<int> site_ids_;
   vector<double> site_x_;
   vector<double> site_y_;
-  unordered_map<int, int> site_id_to_index_;
+  std::unordered_map<int, int> site_id_to_index_;
   map<pair<int, int>, int> river_to_index_;
   vector<int> mines_;
   vector<map<int, int>> futures_;
@@ -237,7 +237,7 @@ class Game {
       e[t].emplace_back(s);
     }
     vector<vector<int>> d(mines_.size(), vector<int>(n, INT_MAX));
-    priority_queue<pair<int, int>> q;
+    std::priority_queue<pair<int, int>> q;
     for (int i = 0; i < mines_.size(); ++i) {
       vector<bool> v(n);
       q.push(make_pair(0, mines_[i]));
