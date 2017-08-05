@@ -107,11 +107,12 @@ class Stream {
     if (pid_ <= 0) { return; }
     do {
       int status;
-      if (waitpid(pid_, &status, WNOHANG) < 0) {
+      int pid = waitpid(pid_, &status, WNOHANG);
+      if (pid < 0) {
         LOG(INFO) << "Stream[" << stream_id() << "]: Failed to wait PID: "
                   << pid_ << ": " << strerror(errno);
       }
-      if (WIFEXITED(status) || WIFSIGNALED(status)) {
+      if (pid == pid_ && (WIFEXITED(status) || WIFSIGNALED(status))) {
         LOG(INFO) << "Stream[" << stream_id() << "]: Already terminated.";
         Reset();
         return;
@@ -262,7 +263,7 @@ class Stream {
         LOG(INFO) << "No streams to poll.";
         return -1;
       }
-      LOG(INFO) << "Polling" << poll_message << "...";
+      VLOG(1) << "Polling" << poll_message << "...";
 
       int result = poll(fds.data(), fds.size(), timeout);
       // poll times out.
@@ -301,6 +302,10 @@ class Stream {
     int pipe_p2c[2];
     CHECK_EQ(0, pipe(pipe_c2p));
     CHECK_EQ(0, pipe(pipe_p2c));
+    SetCloseExec(pipe_c2p[0]);
+    SetCloseExec(pipe_c2p[1]);
+    SetCloseExec(pipe_p2c[0]);
+    SetCloseExec(pipe_p2c[1]);
     pid_ = fork();
     if (pid_ < 0) {
       LOG(FATAL) << "Failed to fork: " << strerror(errno);
@@ -327,8 +332,6 @@ class Stream {
     stdout_ = pipe_c2p[READ];
     SetNonBlocking(stdin_);
     SetNonBlocking(stdout_);
-    SetCloseExec(stdin_);
-    SetCloseExec(stdout_);
   }
 
   string DebugString() const {
