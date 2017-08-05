@@ -13,5 +13,5 @@ for arg in "$@"; do
   args+=" ${arg}"
 done
 
-./ninetan/ninestream --debug=$FLAGS_debug --communicator \
+./ninetan/ninestream --debug=$FLAGS_debug --communicate \
     --master="./sulume/local --alsologtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} $args"
