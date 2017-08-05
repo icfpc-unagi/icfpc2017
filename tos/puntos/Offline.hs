@@ -6,16 +6,17 @@ module Offline
 
 import Control.Monad.Trans.State
 import Data.Aeson
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
+-- import qualified Data.ByteString as B
+-- import qualified Data.ByteString.Lazy as BL
 import Data.Monoid
+
+import qualified NColon
 
 -- offline :: (MonadState s m) => Punter m -> IO ()
 offline punter = do
-  WithState s0 q <- either fail return . eitherDecode =<< BL.fromStrict <$> B.getLine
+  WithState s0 q <- either fail return . eitherDecode =<< NColon.get
   (a, s1) <- runStateT (punter q) $ maybe undefined id s0
-  BL.putStr $ encode $ WithState (Just s1) a
-  putStrLn ""
+  NColon.put $ encode $ WithState (Just s1) a
 
 
 data WithState s x = WithState (Maybe s) x
