@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>MapMaker</title>
+</head>
+<style>
+#canvas {
+	display: inline-block;
+	vertical-align: top;
+}
+
+#textarea {
+	width: 200px;
+	height: 400px;
+}
+</style>
+
+<body>
+	<h1>mapmaker</h1>
+	<canvas width="800" height="600" border="1" id="canvas"></canvas>
+	<sidebar style="display:inline-block">
+		<div>click: site
+			<br> meta+click: mine
+			<br> drag: river</div>
+		<textarea id="textarea" readonly="readonly"></textarea>
+	</sidebar>
+	<script>
+	(function() {
+		var textarea = document.getElementById('textarea');
+		var mode = document.getElementById('mode');
+
+		var map = { 'mines': [], 'rivers': [], 'sites': [] };
+		var siteIndex = {};
+		var mineIndex = {};
+		var active = -1;
+		var dragSource = -1;
+		var dragTarget = -1;
+		var silenceClick = 0;
+
+		function draw() {
+			var canvas = document.getElementById('canvas');
+			var ctx = canvas.getContext("2d");
+			ctx.fillStyle = 'white';
+			ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+			ctx.beginPath();
+			ctx.rect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+			ctx.strokeStyle = 'black';
+			ctx.stroke();
+
+			map.sites.forEach(function(site, i) {
+				var isMine = mineIndex[site.id] >= 0;
+				ctx.beginPath();
+				ctx.arc(site.x, site.y, active == i ? 7 : 5, 0, 2 * Math.PI);
+				ctx.fillStyle = isMine ? 'red' : 'blue';
+				ctx.fill();
+			});
+			map.rivers.forEach(function(river, i) {
+				var s = map.sites[siteIndex[river.source]];
+				var t = map.sites[siteIndex[river.target]];
+				ctx.beginPath();
+				ctx.moveTo(s.x, s.y);
+				ctx.lineTo(t.x, t.y);
+				ctx.strokeStyle = 'gray';
+				ctx.stroke();
+			});
+			if (dragSource >= 0 && dragTarget >= 0 && dragSource != dragTarget) {
+				var s = map.sites[dragSource];
+				var t = map.sites[dragTarget];
+				ctx.beginPath();
+				ctx.moveTo(s.x, s.y);
+				ctx.lineTo(t.x, t.y);
+				ctx.strokeStyle = 'brown';
+				ctx.stroke();
+			}
+			return ctx;
+		}
+
+		function output() {
+			textarea.value = JSON.stringify(map);
+		}
+
+		canvas.addEventListener('click', function(e) {
+			if (silenceClick == e.timeStamp) return;
+			var site = { 'id': Math.floor(e.timeStamp), 'x': e.offsetX, 'y': e.offsetY };
+			siteIndex[site.id] = map.sites.length;
+			map.sites.push(site);
+			if (e.metaKey) {
+				mineIndex[site.id] = map.mines.length;
+				map.mines.push(site.id);
+			}
+			output();
+			// e.shiftKey;
+			// e.altKey;
+			draw();
+		});
+
+		function findClosestSiteIndex(x, y) {
+			var index = -1;
+			var min = Infinity;
+			map.sites.forEach(function(site, i) {
+				var norm = Math.pow(site.x - x, 2) + Math.pow(site.y - y, 2)
+				if (norm < min) {
+					index = i;
+					min = norm;
+				}
+			});
+			return index;
+		}
+
+		canvas.addEventListener('mousedown', function(e) {
+			if (e.button == 0) {
+				dragSource = findClosestSiteIndex(e.offsetX, e.offsetY);
+				e.preventDefault();
+			}
+		});
+
+		canvas.addEventListener('mousemove', function(e) {
+			active = findClosestSiteIndex(e.offsetX, e.offsetY);
+			if (dragSource >= 0) {
+				if (e.buttons & 1) {
+					dragTarget = active;
+				} else {
+					dragSource = -1;
+					dragTarget = -1;
+				}
+			}
+			draw();
+		});
+
+		canvas.addEventListener('mouseup', function(e) {
+			if (e.button == 0) {
+				console.log(e);
+				var target = findClosestSiteIndex(e.offsetX, e.offsetY);
+				if (target >= 0 && dragSource != target) {
+					var river = {
+						'source': map.sites[dragSource].id,
+						'target': map.sites[target].id
+					};
+					var conflict = map.rivers.find(function(r) {
+						return river.source == r.source && river.target == r.target ||
+							river.source == r.target && river.target == r.source;
+					});
+					if (!conflict) {
+						map.rivers.push(river);
+						output();
+						silenceClick = e.timeStamp;
+					}
+				}
+				dragSource = -1;
+				dragTarget = -1;
+				draw();
+				e.preventDefault();
+			}
+		}, true);
+
+		draw();
+		output();
+	})()
+	</script>
+</body>
+
+</html>
