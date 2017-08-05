@@ -112,6 +112,11 @@ class Game {
     if (!FLAGS_listener.empty()) {
       listener_id =
           GetResponseOrDie(StreamUtil::Run(1, FLAGS_listener)).stream_ids[0];
+    } else {
+      auto ids = GetResponseOrDie(StreamUtil::List("communicator")).stream_ids;
+      if (!ids.empty()) {
+        listener_id = ids[0];
+      }
     }
   }
 
@@ -268,9 +273,8 @@ class Game {
       });
     }
     Json final = Json::object{{"scores", scores}};
-    for (const auto& id :
-         GetResponseOrDie(StreamUtil::List("communicator")).stream_ids) {
-      GetResponseOrDie(StreamUtil::Write(id, final.dump()));
+    if (!listener_id.empty()) {
+      GetResponseOrDie(StreamUtil::Write(listener_id, final.dump()));
     }
   }
 
