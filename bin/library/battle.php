@@ -9,7 +9,8 @@ function KeepAlive($interval = 10) {
 $battle = json_decode(file_get_contents(
     'http://proxy.sx9.jp/api/get_battle.php'), TRUE);
 if (!isset($battle['battle_id'])) {
-  fwrite(STDERR, 'No battle.');
+  fwrite(STDERR, "No battle.\n");
+  file_get_contents('http://proxy.sx9.jp/api/add_random_battle.php');
   exit();
 }
 KeepAlive();
