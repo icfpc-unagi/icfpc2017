@@ -3,10 +3,11 @@
 class Database {
 // public
 	// Sets PHP system variables to connect the MySQL server.
-	public static function Initialize($host, $user, $password) {
-		ini_set('mysql.default_host', $host);
-		ini_set('mysql.default_user', $user);
-		ini_set('mysql.default_password', $password);
+	public static function Initialize($host, $port, $user, $password) {
+		ini_set('mysqli.default_host', $host);
+		ini_set('mysqli.default_port', $port);
+		ini_set('mysqli.default_user', $user);
+		ini_set('mysqli.default_pw', $password);
 	}
 
 	public static function Close() {
@@ -31,25 +32,27 @@ class Database {
 	// It returns TRUE if the query is successfully executed.
 	public static function Command($query, $value = array()) {
 		$result = self::Query($query, $value);
-		if (is_resource($result)) self::Free($result);
+		if (is_object($result)) self::Free($result);
 		return $result ? TRUE : FALSE;
 	}
 
 	public static function AffectedRows() {
-		return mysql_affected_rows();
+		if (!($mysql = self::Connect())) return FALSE;
+		return $mysql->affected_rows;
 	}
 
 	public static function InsertID() {
-		return mysql_insert_id();
+		if (!($mysql = self::Connect())) return FALSE;
+		return $mysql->insert_id;
 	}
 
 	// Issues a SELECT query and fetch all the rows.
 	public static function Select($query, $value = array()) {
 		$result = self::Query($query, $value);
 		$table = array();
-		if (is_resource($result)) {
+		if (is_object($result)) {
 			$int_fields = self::IntegerFields($result);
-			while ($line = mysql_fetch_assoc($result)) {
+			while ($line = $result->fetch_assoc()) {
 				foreach ($int_fields as $key) {
 					if (!is_null($line[$key])) {
 						$line[$key] = intval($line[$key]);
@@ -66,9 +69,9 @@ class Database {
 	public static function SelectRow($query, $value = array()) {
 		$result = self::Query($query, $value);
 		$line = FALSE;
-		if (is_resource($result)) {
+		if (is_object($result)) {
 			$int_fields = self::IntegerFields($result);
-			$line = mysql_fetch_assoc($result);
+			$line = mysqli_fetch_assoc($result);
 			foreach ($int_fields as $key) {
 				if (!is_null($line[$key])) {
 					$line[$key] = intval($line[$key]);
@@ -91,39 +94,38 @@ class Database {
 	// you must use the same name as the user name for database name. It uses
 	// only UTF-8 for a character encoding.
 	private static function Connect($status = FALSE, $close = FALSE) {
-		static $initialized = FALSE, $connected = FALSE;
-		if ($status) return $connected;
+		static $initialized = FALSE, $connection = FALSE;
+		if ($status) return $connection;
 		if ($close) {
 			if ($initialized) {
-				mysql_close();
+				mysqli_close();
 				$initialized = FALSE;
-				$connected = FALSE;
+				$connection = FALSE;
 			}
 		} else {
 			if (!$initialized) {
-				$connected = (
-				    mysql_connect() &&
-				    mysql_select_db(ini_get('mysql.default_user')) &&
-				    mysql_set_charset('utf8'));
+				$connection = mysqli_connect();
+				$connection->select_db(ini_get('mysqli.default_user'));
+				$connection->set_charset('utf8');
 				$initialized = TRUE;
 			}
 		}
-		return $connected;
+		return $connection;
 	}
 
 	private static function Free($result) {
-		if (is_resource($result)) mysql_free_result($result);
+		if (is_object($result)) mysqli_free_result($result);
 	}
 
 	private static function Query($query, $value) {
-		if (!self::Connect()) return FALSE;
+		if (!($mysql = self::Connect())) return FALSE;
 		$query = self::Format($query, $value);
 		if (defined('DEBUG_MODE') && DEBUG_MODE === 'sql') {
 			echo trim($query) . "\n\n";
 		}
-		$result = mysql_query($query);
+		$result = $mysql->query($query);
 		if ($result === FALSE) {
-			trigger_error(mysql_error() . ': ' . $query, E_USER_WARNING);
+			trigger_error($mysql->error . ': ' . $query, E_USER_WARNING);
 		}
 		return $result;
 	}
@@ -165,11 +167,11 @@ class Database {
 		}
 		if (is_null($value)) return 'NULL';
 		if (is_int($value) || is_float($value)) return strval($value);
-		// Use mysql_real_escape_string if there is a connection
+		// Use mysqli_real_escape_string if there is a connection
 		if (self::Connect(TRUE)) {
-			return '"' . mysql_real_escape_string(strval($value)) . '"';
+			return '"' . mysqli_real_escape_string(strval($value)) . '"';
 		} else {
-			return '"' . mysql_escape_string(strval($value)) . '"';
+			return '"' . mysqli_escape_string(strval($value)) . '"';
 		}
 	}
 
@@ -190,14 +192,15 @@ class Database {
 	}
 	
 	private static function IntegerFields($result) {
-		$count = mysql_num_fields($result);
-		$fields = array();
-		for ($i = 0; $i < $count; $i++) {
-			$type = strtolower(mysql_field_type($result, $i));
-			if ($type == 'int' || $type == 'tinyint' || $type == 'mediumint') {
-				$fields[] = mysql_field_name($result, $i);
-			}
-		}
-		return $fields;
+		return [];
+		// $count = mysqli_num_fields($result);
+		// $fields = array();
+		// for ($i = 0; $i < $count; $i++) {
+		// 	$type = strtolower(mysqli_field_type($result, $i));
+		// 	if ($type == 'int' || $type == 'tinyint' || $type == 'mediumint') {
+		// 		$fields[] = mysqli_field_name($result, $i);
+		// 	}
+		// }
+		// return $fields;
 	}
 }

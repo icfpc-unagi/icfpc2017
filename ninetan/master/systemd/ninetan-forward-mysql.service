@@ -1,0 +1,12 @@
+[Unit]
+Description=ninetan-forward-ssh
+After=syslog.target network.target
+
+[Service]
+ExecStart=/usr/bin/ssh -R 60306:localhost:3306 -N mewtwo.sx9.jp
+User=ninetan
+Group=ninetan
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

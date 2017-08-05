@@ -2,8 +2,9 @@
 
 source "$(dirname "${BASH_SOURCE}")"/imos-variables || exit 1
 DEFINE_string map 'sample' 'Map'
-DEFINE_string dot '' 'dot'
+DEFINE_string svg '' 'svg'
 DEFINE_int scale 3 'scale'
+DEFINE_bool debug FALSE 'Debug'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 cd "$(dirname "${BASH_SOURCE}")"
@@ -15,4 +16,16 @@ for arg in "$@"; do
   args+=("cd $(pwd); ${WRAPPER} ${arg}")
 done
 
-bazel run -c opt //sulume:run-local -- --map="${FLAGS_map}" --dot="${FLAGS_dot}" --scale=$FLAGS_scale "${args[@]}"
+flags=(
+    --map="${FLAGS_map}"
+    --scale="${FLAGS_scale}"
+    --debug="${FLAGS_debug}"
+)
+if [ "${FLAGS_svg}" != '' ]; then
+  func::tmpfile dot_file
+  flags+=(--dot="${dot_file}")
+fi
+bazel run -c opt //sulume:run-local -- "${flags[@]}" "${args[@]}"
+if [ "${FLAGS_svg}" != '' ]; then
+  dot -Kfdp -Tsvg "${dot_file}" > "${FLAGS_svg}"
+fi

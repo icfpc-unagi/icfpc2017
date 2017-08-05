@@ -51,8 +51,8 @@ map<int, int> ConstructIdToIndexMap(const Map &s) {
 // IO
 //
 json11::Json InputJSON() {
-  std::string stdin((std::istreambuf_iterator<char>(cin)),
-                    std::istreambuf_iterator<char>());
+  std::string stdin;
+  std::getline(cin, stdin);
 
   // Remove 'n:' part
   int i = 0;
