@@ -212,12 +212,17 @@ function RenderPage($buffer) {
             
             <li class="False">
               <a href="./">
-                Ranking
+                順位表
               </a>
             </li>
             <li class="False">
               <a href="latest_battles.php">
-                Battles
+                最新バトル一覧
+              </a>
+            </li>
+            <li class="False">
+              <a href="queue.php">
+                処理キュー状況
               </a>
             </li>
           </ul>
