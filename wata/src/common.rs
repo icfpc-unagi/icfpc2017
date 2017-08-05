@@ -13,6 +13,21 @@ macro_rules! mat {
 	($e:expr; $d:expr $(; $ds:expr)*) => { vec![mat![$e $(; $ds)*]; $d] };
 }
 
+#[macro_export]
+macro_rules! global {
+	($v:ident: $t:ty = $e:expr) => {
+		#[allow(non_snake_case)]
+		fn $v() -> &'static mut $t {
+			#[allow(non_upper_case_globals)]
+			pub static mut $v: *mut $t = 0 as *mut $t;
+			unsafe {
+				if $v.is_null() { $v = Box::into_raw(Box::new($e)); }
+				return &mut *$v;
+			}
+		}
+	}
+}
+
 pub trait SetMin {
 	fn setmin(&mut self, v: Self) -> bool;
 }
