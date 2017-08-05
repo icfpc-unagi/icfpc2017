@@ -16,7 +16,7 @@ DEFINE_string(map, "", "map file");
 DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 DEFINE_string(dot, "", "output dot file");
 DEFINE_bool(dot_all, false, "output dot for all steps");
-DEFINE_double(scale, 3.0, "dot scale");
+DEFINE_double(scale, 5.0, "dot scale");
 DEFINE_bool(futures, true, "enable futures extension");
 
 using json11::Json;
@@ -222,6 +222,7 @@ class Game {
         }
       }
     }
+    Json::array scores;
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
       for (int m : mines_) {
@@ -250,6 +251,14 @@ class Game {
         }
       }
       LOG(INFO) << ais_[p] << ": score=" << score;
+      scores.emplace_back(Json::object{
+          {"punter", p}, {"score", score},
+      });
+    }
+    Json final = Json::object{{"scores", scores}};
+    for (const auto& id :
+         GetResponseOrDie(StreamUtil::List("communicator")).stream_ids) {
+      GetResponseOrDie(StreamUtil::Write(id, final.dump()));
     }
   }
 
