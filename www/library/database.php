@@ -3,8 +3,9 @@
 class Database {
 // public
 	// Sets PHP system variables to connect the MySQL server.
-	public static function Initialize($host, $user, $password) {
+	public static function Initialize($host, $port, $user, $password) {
 		ini_set('mysqli.default_host', $host);
+		ini_set('mysqli.default_port', $port);
 		ini_set('mysqli.default_user', $user);
 		ini_set('mysqli.default_pw', $password);
 	}
