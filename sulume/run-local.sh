@@ -5,6 +5,7 @@ DEFINE_string map 'sample' 'Map'
 DEFINE_string dot '' 'dot'
 DEFINE_int scale 3 'scale'
 DEFINE_bool debug FALSE 'Debug'
+DEFINE_string listener '' 'listener command'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 args=''
@@ -13,5 +14,16 @@ for arg in "$@"; do
   args+=" ${arg}"
 done
 
-./ninetan/ninestream --debug=$FLAGS_debug --communicate \
-    --master="./sulume/local --alsologtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} $args"
+
+flags=(
+	--debug="${FLAGS_debug}"
+)
+
+if [ -z "${FLAGS_listener}" ]; then
+	flags+=(--communicate)
+else
+	func::escapeshellarg FLAGS_listener
+fi
+
+./ninetan/ninestream "${flags[@]}" \
+    --master="./sulume/local --alsologtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} --listener=${FLAGS_listener} $args"
