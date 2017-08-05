@@ -12,7 +12,7 @@ mod common;
 mod lib;
 mod ai;
 
-use ai::randw as strategy;
+const DEFAULT_AI: &'static str = "randw";
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct Input {
@@ -80,10 +80,10 @@ pub struct State {
 	mines: Vec<usize>,
 	moves: Vec<Option<usize>>,
 	names: Vec<i64>,
-	ai: strategy::AI
+	ai: String
 }
 
-fn setup(input: Input) -> Ready {
+fn setup(input: Input, ai: &str) -> Ready {
 	let mut names = vec![];
 	let map = input.map.unwrap();
 	for s in map.sites {
@@ -108,12 +108,20 @@ fn setup(input: Input) -> Ready {
 	mines.sort();
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
-	let state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
-	let ai = strategy::setup(&state);
-	Ready { ready: my, state: State { ai, .. state } }
+	let mut state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
+	if ai == "greedy" {
+		ai::greedy::setup(&mut state);
+	} else if ai == "randw" {
+		ai::randw::setup(&mut state);
+	} else if ai == "obst" {
+		ai::obst::setup(&mut state);
+	} else {
+		panic!("unknown ai: {}", ai);
+	}
+	Ready { ready: my, state }
 }
 
-fn play(input: Input) -> Play {
+fn play(input: Input, ai: &str) -> Play {
 	let moves = input.move_.unwrap().moves;
 	let p = moves.len();
 	let mut last = vec![None; p];
@@ -135,46 +143,23 @@ fn play(input: Input) -> Play {
 			state.moves.push(last[(state.my + i) % state.p]);
 		}
 	}
-	let e = strategy::play(&mut state);
+	let e = if ai == "greedy" {
+		ai::greedy::play(&mut state)
+	} else if ai == "randw" {
+		ai::randw::play(&mut state)
+	} else if ai == "obst" {
+		ai::obst::play(&mut state)
+	} else {
+		panic!("unknown ai: {}", ai);
+	};
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.moves.push(Some(e));
 	eprintln!("{}: {} {}", state.my, claim.source, claim.target);
 	Play { claim, state }
 }
 
-fn self_battle() {
-	use std::io::Read;
-	let map = std::env::args().nth(1).unwrap();
-	let p = std::env::args().nth(2).unwrap().parse().unwrap();
-	let file = std::fs::File::open(map).unwrap();
-	let mut reader = std::io::BufReader::new(file);
-	let mut input = String::new();
-	reader.read_to_string(&mut input).unwrap();
-	let map: Map = serde_json::from_str(&input).unwrap();
-	let mut states: Vec<_> = (0..p).map(|i| Some(setup(Input {
-		punter: Some(i),
-		punters: Some(p),
-		map: Some(map.clone()),
-		.. Default::default()
-	} ).state)).collect();
-	let mut moves = vec![Move { claim: None }; p];
-	for i in 0..map.rivers.len() {
-		let play = play(Input {
-			move_: Some(Moves { moves: moves.clone() }),
-			state: Some(std::mem::replace(&mut states[i % p], None).unwrap()),
-			.. Default::default()
-		});
-		eprintln!("{}: {} {}", play.claim.punter, play.claim.source, play.claim.target);
-		moves[i % p] = Move { claim: Some(play.claim) };
-		states[i % p] = Some(play.state);
-	}
-}
-
 fn main() {
-	if std::env::args().count() > 1 {
-		self_battle();
-		return;
-	}
+	let t = ::std::time::SystemTime::now();
 	use std::io::Read;
 	let mut input = String::new();
 	std::io::stdin().read_line(&mut input).unwrap();
@@ -182,12 +167,15 @@ fn main() {
 	input = input[p..].to_owned();
 	let input: Input = serde_json::from_str(&input).unwrap();
 	if input.map.is_some() {
-		let out = serde_json::to_string(&setup(input)).unwrap();
+		let out = serde_json::to_string(&setup(input, &std::env::args().nth(1).unwrap_or(DEFAULT_AI.to_owned()))).unwrap();
 		println!("{}:{}", out.len(), out);
 	} else if input.move_.is_some() {
-		let out = serde_json::to_string(&play(input)).unwrap();
+		let out = serde_json::to_string(&play(input, &std::env::args().nth(1).unwrap_or(DEFAULT_AI.to_owned()))).unwrap();
 		println!("{}:{}", out.len(), out);
 	} else {
 		panic!("Invalid input: {:?}", input);
 	}
+	let d = t.elapsed().unwrap();
+	let s = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
+	eprintln!("time: {:.3}", s);
 }

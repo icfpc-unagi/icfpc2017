@@ -3,17 +3,18 @@ use ::lib::unionfind::UnionFind;
 use ::State;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct AI {
-	pub dist: Vec<Vec<usize>>
+struct AI {
+	dist: Vec<Vec<usize>>
 }
 
-pub fn setup(state: &State) -> AI {
+pub fn setup(state: &mut State) {
 	eprintln!("greedy");
 	let g = state.graph.iter().map(|u| u.iter().map(|&(v, _)| v).collect()).collect();
-	AI { dist: state.mines.iter().map(|&v| ::lib::bfs(&g, v)).collect() }
+	state.ai = ::serde_json::to_string(&AI { dist: state.mines.iter().map(|&v| ::lib::bfs(&g, v)).collect() }).unwrap();
 }
 
 fn score(state: &State, uf: &UnionFind, u: usize, v: usize) -> i64 {
+	let ai: AI = ::serde_json::from_str(&state.ai).unwrap();
 	let n = state.graph.len();
 	if uf.same(u, v) {
 		return 0;
@@ -24,7 +25,7 @@ fn score(state: &State, uf: &UnionFind, u: usize, v: usize) -> i64 {
 	for (i, &x) in state.mines.iter().enumerate() {
 		for y in 0..n {
 			if uf.same(x, y) {
-				score += state.ai.dist[i][y] * state.ai.dist[i][y];
+				score += ai.dist[i][y] * ai.dist[i][y];
 			}
 		}
 	}
