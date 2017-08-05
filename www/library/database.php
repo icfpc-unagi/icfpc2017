@@ -168,8 +168,8 @@ class Database {
 		if (is_null($value)) return 'NULL';
 		if (is_int($value) || is_float($value)) return strval($value);
 		// Use mysqli_real_escape_string if there is a connection
-		if (self::Connect(TRUE)) {
-			return '"' . mysqli_real_escape_string(strval($value)) . '"';
+		if ($mysql = self::Connect()) {
+			return '"' . $mysql->real_escape_string(strval($value)) . '"';
 		} else {
 			return '"' . mysqli_escape_string(strval($value)) . '"';
 		}
