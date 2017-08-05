@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <queue>
 #include <stack>
 #include <string>
 #include <unordered_map>
@@ -228,47 +229,56 @@ class Game {
 
   void score() {
     int n = site_ids_.size();
-    vector<vector<int>> d(n, vector<int>(n, INT_MAX / 2));
-    for (int i = 0; i < n; ++i) d[i][i] = 0;
+    vector<vector<int>> e(river_to_index_.size());
     for (const auto& r : river_to_index_) {
       int s = site_id_to_index_[r.first.first];
       int t = site_id_to_index_[r.first.second];
-      d[s][t] = 1;
-      d[t][s] = 1;
+      e[s].emplace_back(t);
+      e[t].emplace_back(s);
     }
-    for (int k = 0; k < n; ++k) {
-      for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-          d[i][j] = min(d[i][j], d[i][k] + d[k][j]);
-        }
+    vector<vector<int>> d(mines_.size(), vector<int>(n, INT_MAX));
+    priority_queue<pair<int, int>> q;
+    for (int i = 0; i < mines_.size(); ++i) {
+      vector<bool> v(n);
+      q.push(make_pair(0, mines_[i]));
+      while (!q.empty()) {
+        int c, s;
+        std::tie(c, s) = q.top();
+        q.pop();
+        if (v[s]) continue;
+        v[s] = true;
+        d[i][s] = -c;
+        for (int t : e[s]) q.push(make_pair(c - 1, t));
       }
     }
     Json::array scores;
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
-      for (int m : mines_) {
+      for (int i = 0; i < mines_.size(); ++i) {
         int bet = -1;
-        auto it = futures_[p].find(m);
+        auto it = futures_[p].find(mines_[i]);
         if (it != futures_[p].end()) {
           bet = it->second;
         }
-        vector<bool> visited(n, false);
+        vector<bool> visited(n);
         std::stack<int> st;
-        st.push(m);
+        st.push(mines_[i]);
         while (!st.empty()) {
           int s = st.top();
           st.pop();
           if (visited[s]) continue;
           visited[s] = true;
-          score += d[m][s] * d[m][s];
+          int d0 = d[i][s];
+          score += d0 * d0;
           if (bet == s) {
-            score += d[m][s] * d[m][s] * d[m][s];
+            score += d0 * d0 * d0;
             bet = -1;
           }
           for (int t : punter_river_adj_[p][s]) st.push(t);
         }
         if (bet != -1) {
-          score -= d[m][bet] * d[m][bet] * d[m][bet];
+          int d0 = d[i][bet];
+          score -= d0 * d0 * d0;
         }
       }
       LOG(INFO) << ais_[p] << ": score=" << score;
