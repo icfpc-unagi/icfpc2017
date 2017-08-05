@@ -4,6 +4,7 @@
 #include <map>
 #include <stack>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "base/base.h"
 #include "json11.hpp"
@@ -43,17 +44,17 @@ string part_filename(const string& file, int part) {
 
 class Game {
   vector<string> ais_;
-  string listener_id = "";
+  string listener_id;
   // Map = {"sites" : [Site], "rivers" : [River], "mines" : [SiteId]}
   // Site = {"id" : SiteId}
   // River = {"source" : SiteId, "target" : SiteId}
   // SiteId = Nat
   Json map_json_;
-  vector<int64> site_ids_;
+  vector<int> site_ids_;
   vector<double> site_x_;
   vector<double> site_y_;
-  map<int64, int> site_id_to_index_;
-  map<pair<int64, int64>, int> river_to_index_;
+  unordered_map<int, int> site_id_to_index_;
+  map<pair<int, int>, int> river_to_index_;
   vector<int> mines_;
   vector<map<int, int>> futures_;
 
@@ -61,7 +62,6 @@ class Game {
   vector<bool> river_claimed_;
   vector<vector<vector<int>>> punter_river_adj_;
   vector<Json> last_moves_;
-  int claimed_;
 
  public:
   Game(vector<string> ais) : ais_(ais) {}
@@ -73,11 +73,15 @@ class Game {
                                    std::istreambuf_iterator<char>()),
                             err);
     CHECK(err.empty()) << "loading " << FLAGS_map << ": " << err;
-    for (auto site : map_json_["sites"].array_items()) {
+    for (const auto& site : map_json_["sites"].array_items()) {
       site_ids_.push_back(site["id"].int_value());
-      if (site["x"].is_number() && site["y"].is_number()) {
-        site_x_.push_back(site["x"].number_value());
-        site_y_.push_back(site["y"].number_value());
+      if (!FLAGS_dot.empty()) {
+        const auto& x = site["x"];
+        const auto& y = site["y"];
+        if (x.is_number() && y.is_number()) {
+          site_x_.push_back(x.number_value());
+          site_y_.push_back(y.number_value());
+        }
       }
     }
     if (site_x_.size() != site_ids_.size() ||
@@ -90,25 +94,23 @@ class Game {
     }
     auto rivers = map_json_["rivers"].array_items();
     for (int i = 0; i < rivers.size(); ++i) {
-      river_to_index_.emplace(
-          make_sorted_pair<int64>(rivers[i]["source"].int_value(),
-                                  rivers[i]["target"].int_value()),
-          i);
+      river_to_index_.emplace(make_sorted_pair(rivers[i]["source"].int_value(),
+                                               rivers[i]["target"].int_value()),
+                              i);
     }
-    river_claimed_.resize(river_to_index_.size());
+    river_claimed_.resize(rivers.size());
     for (const auto& mine : map_json_["mines"].array_items()) {
       mines_.push_back(site_id_to_index_[mine.int_value()]);
     }
 
     punter_river_adj_.resize(ais_.size(),
                              vector<vector<int>>(site_ids_.size()));
-    futures_.resize(ais_.size());
+    if (FLAGS_futures) futures_.resize(ais_.size());
     states_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
-          Json::object{{"pass", Json::object{{"punter", 1}}}});
+          Json::object{{"pass", Json::object{{"punter", i}}}});
     }
-    claimed_ = 0;
     if (!FLAGS_listener.empty()) {
       listener_id =
           GetResponseOrDie(StreamUtil::Run(1, FLAGS_listener)).stream_ids[0];
@@ -122,18 +124,25 @@ class Game {
 
   void start() {
     for (int i = 0; i < ais_.size(); ++i) {
-      states_[i] = setup(i, ais_.size(), map_json_)["state"];
+      auto got = setup(i, ais_.size(), map_json_);
+      states_[i] = got["state"];
+      if (FLAGS_futures) {
+        for (const auto& future : got["futures"].array_items()) {
+          futures_[i].emplace(future["source"].int_value(),
+                              future["target"].int_value());
+        }
+      }
     }
     if (!listener_id.empty()) {
       GetResponseOrDie(StreamUtil::Write(
           listener_id, setup_json(-1, ais_.size(), map_json_).dump()));
     }
-    for (int turn = 0; turn < river_to_index_.size(); ++turn) {
+    for (int turn = 0; turn < river_claimed_.size(); ++turn) {
       int i = turn % ais_.size();
       auto move_state = gameplay(i, last_moves_, states_[i]);
-      auto claim = move_state["claim"];
-      int64 s = claim["source"].int_value();
-      int64 t = claim["target"].int_value();
+      const auto& claim = move_state["claim"];
+      int s = claim["source"].int_value();
+      int t = claim["target"].int_value();
       auto it = river_to_index_.find(make_sorted_pair(s, t));
       if (it == river_to_index_.end()) {
         LOG(ERROR) << "invalid river [" << ais_[i] << "]: " << claim.dump();
@@ -148,7 +157,7 @@ class Game {
         int t_i = site_id_to_index_[t];
         punter_river_adj_[i][s_i].push_back(t_i);
         punter_river_adj_[i][t_i].push_back(s_i);
-        last_moves_[i] = Json::object{{"claim", move_state["claim"]}};
+        last_moves_[i] = Json::object{{"claim", claim}};
       }
       states_[i] = move_state["state"];
       if (!FLAGS_dot.empty() && FLAGS_dot_all) {
@@ -197,11 +206,6 @@ class Game {
     // P → S {"ready" : p, "state" : state}
     Json got = io_once(ais_[p], setup_json(p, total, map_json));
     CHECK_EQ(got["ready"].int_value(), p);
-    if (FLAGS_futures) {
-      for (const auto& future : got["futures"].array_items()) {
-        future["source"].int_value(), future["target"].int_value();
-      }
-    }
     return got;
   }
 
