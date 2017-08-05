@@ -26,13 +26,17 @@
 	<sidebar style="display:inline-block">
 		<div>click: site
 			<br> meta+click: mine
-			<br> drag: river</div>
+			<br> drag: river
+			<br> r-click: delete</div>
+		<div>
+			<input type="button" value="Grid!" id="grid">
+		</div>
 		<textarea id="textarea"></textarea>
 	</sidebar>
 	<script>
 	(function() {
 		var textarea = document.getElementById('textarea');
-		var mode = document.getElementById('mode');
+		var grid = document.getElementById('grid');
 
 		var map = { 'mines': [], 'rivers': [], 'sites': [] };
 		var siteIndex = {};
@@ -198,6 +202,26 @@
 			} catch (error) {
 				console.warn(error);
 				e.target.classList.add('warn');
+			}
+		});
+
+		grid.addEventListener('click', function(e) {
+			var size = parseInt(prompt("Grid size?", "8"));
+			if (0 < size) {
+				var sites = [];
+				for (var i = 0; i < size; i++) {
+					for (var j = 0; j < size; j++) {
+						sites.push({
+							'id': i * size + j,
+							'x': i * 500 / (size - 1) + 150,
+							'y': j * 500 / (size - 1) + 50
+						});
+					}
+				}
+				map = { 'mines': [], 'rivers': [], 'sites': sites };
+				refreshIndices();
+				output();
+				draw();
 			}
 		});
 
