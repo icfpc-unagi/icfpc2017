@@ -26,8 +26,9 @@ std::pair<T, T> make_sorted_pair(const T& a, const T& b) {
   return a < b ? make_pair(a, b) : make_pair(b, a);
 }
 
-constexpr char* kColorPalette[] = {"blue", "green",  "brown", "pink",
-                                   "cyan", "violet", "gold",  "orange"};
+constexpr char* const kColorPalette[] = {
+    "blue", "green", "brown", "pink", "cyan", "violet", "gold", "orange",
+};
 
 class Game {
   vector<string> ais_;
@@ -37,7 +38,8 @@ class Game {
   // SiteId = Nat
   Json map_json_;
   vector<int64> site_ids_;
-  vector<pair<double, double>> site_pos_;
+  vector<double> site_x_;
+  vector<double> site_y_;
   map<int64, int> site_id_to_index_;
   map<pair<int64, int64>, int> river_to_index_;
   vector<int> mines_;
@@ -61,8 +63,15 @@ class Game {
     CHECK(err.empty()) << "loading " << FLAGS_map << ": " << err;
     for (auto site : map_json_["sites"].array_items()) {
       site_ids_.push_back(site["id"].int_value());
-      site_pos_.emplace_back(site["x"].number_value(),
-                             site["y"].number_value());
+      if (site["x"].is_number() && site["y"].is_number()) {
+        site_x_.push_back(site["x"].number_value());
+        site_y_.push_back(site["y"].number_value());
+      }
+    }
+    if (site_x_.size() != site_ids_.size() ||
+        site_y_.size() != site_ids_.size()) {
+      site_x_.clear();
+      site_y_.clear();
     }
     for (int i = 0; i < site_ids_.size(); ++i) {
       site_id_to_index_.emplace(site_ids_[i], i);
@@ -236,9 +245,15 @@ class Game {
     if (!FLAGS_dot.empty()) {
       string dot;
       StrAppend(&dot, "graph {\nnode[shape=point]\n");
+      double min_x = *std::min_element(site_x_.begin(), site_x_.end());
+      double min_y = *std::min_element(site_y_.begin(), site_y_.end());
+      double scale =
+          10.0 /
+          std::max(*std::max_element(site_x_.begin(), site_x_.end()) - min_x,
+                   *std::max_element(site_y_.begin(), site_y_.end()) - min_y);
       for (int i = 0; i < site_ids_.size(); ++i) {
-        StrAppend(&dot, site_ids_[i], "[pos=\"", site_pos_[i].first, ",",
-                  site_pos_[i].second, "!\"]\n");
+        StrAppend(&dot, site_ids_[i], "[pos=\"", (site_x_[i] - min_x) * scale,
+                  ",", (site_y_[i] - min_y) * scale, "!\"]\n");
       }
       for (int m : mines_) {
         StrAppend(&dot, site_ids_[m], "[color=red]\n");
