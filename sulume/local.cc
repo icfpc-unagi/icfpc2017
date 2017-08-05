@@ -14,6 +14,7 @@
 DEFINE_string(map, "", "map file");
 DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 DEFINE_string(dot, "", "output dot file");
+DEFINE_bool(futures, true, "enable futures extension");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -40,6 +41,7 @@ class Game {
   map<int64, int> site_id_to_index_;
   map<pair<int64, int64>, int> river_to_index_;
   vector<int> mines_;
+  vector<map<int, int>> futures_;
 
   vector<Json> states_;
   vector<bool> river_claimed_;
@@ -79,6 +81,7 @@ class Game {
 
     punter_river_adj_.resize(ais_.size(),
                              vector<vector<int>>(site_ids_.size()));
+    futures_.resize(ais_.size());
     states_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
@@ -124,12 +127,72 @@ class Game {
       }
     }
 
+    score();
+    gen_dot();
+  }
+
+ private:
+  static Json io_once(const string& cmd, const Json& in) {
+    string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
+    string send = in.dump();
+    GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
+    string recv = GetResponseOrDie(StreamUtil::Read(id, 10000)).data;
+    GetResponseOrDie(StreamUtil::Kill(id));
+    size_t i = recv.find(':');
+    CHECK_NE(i, string::npos) << "missing prefix: " << recv;
+    uint32 n;
+    CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
+    string err;
+    Json out = Json::parse(recv.substr(i + 1), err);
+    CHECK(err.empty()) << "parse error: " << err;
+    return out;
+  }
+
+  // state
+  Json setup(int id, int total, Json map_json) {
+    // S → P {"punter" : p, "punters" : n, "map" : map}
+    // P → S {"ready" : p, "state" : state}
+    int p = id;
+    Json send = Json::object{
+        {"punter", p},
+        {"punters", total},
+        {"map", map_json},
+        {"settings", FLAGS_futures ? Json::object{{"futures", true}} : Json()}};
+    Json got = io_once(ais_[id], send);
+    CHECK_EQ(got["ready"].int_value(), p);
+    if (FLAGS_futures) {
+      for (const auto& future : got["futures"].array_items()) {
+        future["source"].int_value(), future["target"].int_value();
+      }
+    }
+    return got;
+  }
+
+  // move, state
+  pair<Json, Json> gameplay(int id, const Json::array& moves,
+                            const Json& state) {
+    // S → P {"punter" : p, "punters" : n, "map" : map}
+    // P → S {"ready" : p, "state" : state}
+    Json send = Json::object{{"move", Json::object{{"moves", moves}}},
+                             {"state", state}};
+    Json got = io_once(ais_[id], send);
+    // does not support "pass"
+    const auto& claim = got["claim"];
+    CHECK_EQ(claim["punter"].int_value(), id) << claim.dump();
+    CHECK(claim["source"].is_number()) << claim.dump();
+    CHECK(claim["target"].is_number()) << claim.dump();
+    return make_pair(Json(Json::object{{"claim", claim}}), got["state"]);
+  }
+
+  void score() {
     int n = site_ids_.size();
     vector<vector<int>> d(n, vector<int>(n, INT_MAX / 2));
     for (int i = 0; i < n; ++i) d[i][i] = 0;
     for (const auto& r : river_to_index_) {
-      d[r.first.first][r.first.second] = 1;
-      d[r.first.second][r.first.first] = 1;
+      int s = site_id_to_index_[r.first.first];
+      int t = site_id_to_index_[r.first.second];
+      d[s][t] = 1;
+      d[t][s] = 1;
     }
     for (int k = 0; k < n; ++k) {
       for (int i = 0; i < n; ++i) {
@@ -141,6 +204,11 @@ class Game {
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
       for (int m : mines_) {
+        int bet = -1;
+        auto it = futures_[p].find(m);
+        if (it != futures_[p].end()) {
+          bet = it->second;
+        }
         vector<bool> visited(n, false);
         std::stack<int> st;
         st.push(m);
@@ -150,12 +218,21 @@ class Game {
           if (visited[s]) continue;
           visited[s] = true;
           score += d[m][s] * d[m][s];
+          if (bet == s) {
+            score += d[m][s] * d[m][s] * d[m][s];
+            bet = -1;
+          }
           for (int t : punter_river_adj_[p][s]) st.push(t);
+        }
+        if (bet != -1) {
+          score -= d[m][bet] * d[m][bet] * d[m][bet];
         }
       }
       LOG(INFO) << ais_[p] << ": score=" << score;
     }
+  }
 
+  void gen_dot() {
     if (!FLAGS_dot.empty()) {
       string dot;
       StrAppend(&dot, "graph {\nnode[shape=point]\n");
@@ -167,7 +244,7 @@ class Game {
         StrAppend(&dot, site_ids_[m], "[color=red]\n");
       }
       for (int i = 0; i < ais_.size(); ++i) {
-        for (int j = 0; j < n; ++j) {
+        for (int j = 0; j < site_ids_.size(); ++j) {
           for (int k : punter_river_adj_[i][j]) {
             if (j < k) {
               StrAppend(&dot, site_ids_[j], "--", site_ids_[k],
@@ -182,52 +259,6 @@ class Game {
       ofs << dot;
       LOG(INFO) << "dot out: " << FLAGS_dot;
     }
-  }
-
- private:
-  static Json io_once(const string& cmd, const Json& in) {
-    string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
-    string send = in.dump();
-    GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
-    string recv = GetResponseOrDie(StreamUtil::Read(id, 10000)).data;
-    GetResponseOrDie(StreamUtil::Kill(id));
-    size_t i = recv.find(':');
-    CHECK_NE(i, string::npos) << recv;
-    uint32 n;
-    CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
-    string err;
-    Json out = Json::parse(recv.substr(i + 1), err);
-    CHECK(err.empty()) << err;
-    return out;
-  }
-
-  // state
-  Json setup(int id, int total, Json map_json) {
-    // S → P {"punter" : p, "punters" : n, "map" : map}
-    // P → S {"ready" : p, "state" : state}
-    int p = id;
-    Json send = Json::object{
-        {"punter", p}, {"punters", total}, {"map", map_json},
-    };
-    Json got = io_once(ais_[id], send);
-    CHECK_EQ(got["ready"].int_value(), p);
-    return got;
-  }
-
-  // move, state
-  pair<Json, Json> gameplay(int id, const Json::array& moves,
-                            const Json& state) {
-    // S → P {"punter" : p, "punters" : n, "map" : map}
-    // P → S {"ready" : p, "state" : state}
-    Json send = Json::object{{"move", Json::object{{"moves", moves}}},
-                             {"state", state}};
-    Json got = io_once(ais_[id], send);
-    // does not support "pass"
-    const auto& claim = got["claim"];
-    CHECK_EQ(claim["punter"].int_value(), id);
-    CHECK(claim["source"].is_number());
-    CHECK(claim["target"].is_number());
-    return make_pair(Json(Json::object{{"claim", got["claim"]}}), got["state"]);
   }
 };
 
