@@ -78,3 +78,17 @@ vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
 
   return dst;
 }
+
+UnionFind MergeSameDistanceLayersPlayer
+(const Graph &g, const vector<pair<int, int>> &dst, int rank) {
+  UnionFind uf(g.size());
+
+  rep (v, N) {
+    for (const auto &e : g[v]) {
+      if (e.owner >= 0 && e.owner != rank) continue;
+      if (dst[v].first != dst[e.to].first) continue;
+      uf.merge(v, e.to);
+    }
+  }
+  return uf;
+}
