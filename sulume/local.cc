@@ -11,9 +11,11 @@
 #include "strings/numbers.h"
 #include "strings/strcat.h"
 
+DEFINE_int32(timeout, 10000, "timeout in millisecs");
 DEFINE_string(map, "", "map file");
 DEFINE_string(ai, "", "deprecated; specify AI commands as args");
 DEFINE_string(dot, "", "output dot file");
+DEFINE_bool(dot_all, false, "output dot for all steps");
 DEFINE_double(scale, 3.0, "dot scale");
 DEFINE_bool(futures, true, "enable futures extension");
 
@@ -27,9 +29,17 @@ std::pair<T, T> make_sorted_pair(const T& a, const T& b) {
   return a < b ? make_pair(a, b) : make_pair(b, a);
 }
 
-constexpr char* const kColorPalette[] = {
+const char* const kColorPalette[] = {
     "blue", "green", "brown", "pink", "cyan", "violet", "gold", "orange",
 };
+
+// foo.bar -> foo-1.bar
+string part_filename(const string& file, int part) {
+  size_t p = file.rfind('.');
+  return p == string::npos
+             ? StrCat(file, "-", part)
+             : StrCat(StringPiece(file, 0, p), "-", part, StringPiece(file, p));
+}
 
 class Game {
   vector<string> ais_;
@@ -104,41 +114,40 @@ class Game {
     for (int i = 0; i < ais_.size(); ++i) {
       states_[i] = setup(i, ais_.size(), map_json_)["state"];
     }
-    for (int turn = 0; turn < river_claimed_.size(); ++turn) {
-      for (int i = 0; i < ais_.size(); ++i) {
-        auto move_state = gameplay(i, last_moves_, states_[i]);
-        auto claim = move_state.first["claim"];
-        int64 s = claim["source"].int_value();
-        int64 t = claim["target"].int_value();
-        auto it = river_to_index_.find(make_sorted_pair(s, t));
-        if (it == river_to_index_.end()) {
-          LOG(ERROR) << ais_[i] << ": " << claim.dump();
-          continue;
-        }
-        int river_index = it->second;
-        if (river_claimed_[river_index]) {
-          LOG(WARNING) << "river claimed twice: " << claim.dump();
-          last_moves_[i] =
-              Json::object{{"pass", Json::object{{"punter", claim["punter"]}}}};
-        } else {
-          river_claimed_[river_index] = true;
-          claimed_++;
-          last_moves_[i] = move_state.first;
-          int s_i = site_id_to_index_[s];
-          int t_i = site_id_to_index_[t];
-          punter_river_adj_[i][s_i].push_back(t_i);
-          punter_river_adj_[i][t_i].push_back(s_i);
-        }
-        states_[i] = move_state.second;
+    for (int turn = 0; turn < river_to_index_.size(); ++turn) {
+      int i = turn % ais_.size();
+      auto move_state = gameplay(i, last_moves_, states_[i]);
+      auto claim = move_state.first["claim"];
+      int64 s = claim["source"].int_value();
+      int64 t = claim["target"].int_value();
+      auto it = river_to_index_.find(make_sorted_pair(s, t));
+      if (it == river_to_index_.end()) {
+        LOG(ERROR) << ais_[i] << ": " << claim.dump();
+        continue;
       }
-      if (claimed_ >= river_claimed_.size()) {
-        LOG(INFO) << "All rivers claimed; game ends.";
-        break;
+      int river_index = it->second;
+      if (river_claimed_[river_index]) {
+        LOG(WARNING) << "river claimed twice: " << claim.dump();
+        last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
+      } else {
+        river_claimed_[river_index] = true;
+        last_moves_[i] = move_state.first;
+        int s_i = site_id_to_index_[s];
+        int t_i = site_id_to_index_[t];
+        punter_river_adj_[i][s_i].push_back(t_i);
+        punter_river_adj_[i][t_i].push_back(s_i);
+      }
+      states_[i] = move_state.second;
+      if (!FLAGS_dot.empty() && FLAGS_dot_all) {
+        gen_dot(part_filename(FLAGS_dot, turn));
       }
     }
+    LOG(INFO) << "game ends.";
 
     score();
-    gen_dot();
+    if (!FLAGS_dot.empty()) {
+      gen_dot(FLAGS_dot);
+    }
   }
 
  private:
@@ -146,7 +155,7 @@ class Game {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
     string send = in.dump();
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
-    string recv = GetResponseOrDie(StreamUtil::Read(id, 10000)).data;
+    string recv = GetResponseOrDie(StreamUtil::Read(id, FLAGS_timeout)).data;
     GetResponseOrDie(StreamUtil::Kill(id));
     size_t i = recv.find(':');
     CHECK_NE(i, string::npos) << "missing prefix: " << recv;
@@ -186,11 +195,13 @@ class Game {
     Json send = Json::object{{"move", Json::object{{"moves", moves}}},
                              {"state", state}};
     Json got = io_once(ais_[id], send);
-    // does not support "pass"
     const auto& claim = got["claim"];
-    CHECK_EQ(claim["punter"].int_value(), id) << claim.dump();
-    CHECK(claim["source"].is_number()) << claim.dump();
-    CHECK(claim["target"].is_number()) << claim.dump();
+    if (claim["punter"].int_value() != id || !claim["source"].is_number() ||
+        !claim["target"].is_number()) {
+      LOG(ERROR) << ais_[id] << " invalid claim: " << claim.dump();
+      return pair<Json, Json>{
+          Json::object{{"pass", Json::object{{"punter", id}}}}, got["state"]};
+    }
     return make_pair(Json(Json::object{{"claim", claim}}), got["state"]);
   }
 
@@ -242,41 +253,39 @@ class Game {
     }
   }
 
-  void gen_dot() {
-    if (!FLAGS_dot.empty()) {
-      string dot;
-      StrAppend(&dot, "graph {\nnode[shape=point]\n");
-      StrAppend(&dot, "graph[bb=\"0,0,", FLAGS_scale, ",", FLAGS_scale,
-                      "\",margin=\"", FLAGS_scale / 10, "\"]\n");
-      double min_x = *std::min_element(site_x_.begin(), site_x_.end());
-      double min_y = *std::min_element(site_y_.begin(), site_y_.end());
-      double scale =
-          FLAGS_scale /
-          std::max(*std::max_element(site_x_.begin(), site_x_.end()) - min_x,
-                   *std::max_element(site_y_.begin(), site_y_.end()) - min_y);
-      for (int i = 0; i < site_ids_.size(); ++i) {
-        StrAppend(&dot, site_ids_[i], "[pos=\"", (site_x_[i] - min_x) * scale,
-                  ",", (site_y_[i] - min_y) * scale, "!\"]\n");
-      }
-      for (int m : mines_) {
-        StrAppend(&dot, site_ids_[m], "[color=red]\n");
-      }
-      for (int i = 0; i < ais_.size(); ++i) {
-        for (int j = 0; j < site_ids_.size(); ++j) {
-          for (int k : punter_river_adj_[i][j]) {
-            if (j < k) {
-              StrAppend(&dot, site_ids_[j], "--", site_ids_[k],
-                        "[color=", kColorPalette[i % 8], "]\n");
-            }
+  void gen_dot(const string& file) {
+    string dot;
+    StrAppend(&dot, "graph {\nnode[shape=point]\n");
+    StrAppend(&dot, "graph[bb=\"0,0,", FLAGS_scale, ",", FLAGS_scale,
+              "\",margin=\"", FLAGS_scale / 10, "\"]\n");
+    double min_x = *std::min_element(site_x_.begin(), site_x_.end());
+    double min_y = *std::min_element(site_y_.begin(), site_y_.end());
+    double scale =
+        FLAGS_scale /
+        std::max(*std::max_element(site_x_.begin(), site_x_.end()) - min_x,
+                 *std::max_element(site_y_.begin(), site_y_.end()) - min_y);
+    for (int i = 0; i < site_ids_.size(); ++i) {
+      StrAppend(&dot, site_ids_[i], "[pos=\"", (site_x_[i] - min_x) * scale,
+                ",", (site_y_[i] - min_y) * scale, "!\"]\n");
+    }
+    for (int m : mines_) {
+      StrAppend(&dot, site_ids_[m], "[color=red]\n");
+    }
+    for (int i = 0; i < ais_.size(); ++i) {
+      for (int j = 0; j < site_ids_.size(); ++j) {
+        for (int k : punter_river_adj_[i][j]) {
+          if (j < k) {
+            StrAppend(&dot, site_ids_[j], "--", site_ids_[k],
+                      "[color=", kColorPalette[i % 8], "]\n");
           }
         }
       }
-      StrAppend(&dot, "}\n");
-
-      std::ofstream ofs(FLAGS_dot);
-      ofs << dot;
-      LOG(INFO) << "dot out: " << FLAGS_dot;
     }
+    StrAppend(&dot, "}\n");
+
+    std::ofstream ofs(file);
+    ofs << dot;
+    LOG(INFO) << "dot out: " << file;
   }
 };
 
