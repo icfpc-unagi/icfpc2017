@@ -176,7 +176,7 @@ fn main() {
 	}
 	use std::io::Read;
 	let mut input = String::new();
-	std::io::stdin().read_to_string(&mut input).unwrap();
+	std::io::stdin().read_line(&mut input).unwrap();
 	let p = input.find(':').unwrap() + 1;
 	input = input[p..].to_owned();
 	let input: Input = serde_json::from_str(&input).unwrap();
