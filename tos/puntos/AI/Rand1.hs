@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module AI.Rand1
   (randAI1) where
