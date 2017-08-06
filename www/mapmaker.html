@@ -23,6 +23,11 @@ main {
 .warn {
 	box-shadow: red 0 0 10px;
 }
+
+fieldset {
+	margin:2pt 0;
+	font-size: 8pt;
+}
 </style>
 
 <body>
@@ -35,9 +40,16 @@ main {
 			<br> meta+click: mine
 			<br> drag: river
 			<br> r-click: delete</div>
-		<div>
-			<input type="button" value="Grid!" id="grid">
-		</div>
+		<form id="grid">
+		<fieldset>
+			size:
+			<input type="number" id="grid_n" min="1" value="8">
+			<br>mines:
+			<input type="number" id="grid_m" min="1" value="8">
+			<br>
+			<input type="submit" value="Grid!">
+		</fieldset>
+			</form>
 		<div>
 			<textarea id="textarea"></textarea>
 		</div>
@@ -218,37 +230,45 @@ main {
 			}
 		});
 
-		grid.addEventListener('click', function(e) {
-			var size = parseInt(prompt("Grid size?", "8"));
-			if (0 < size) {
-				var sites = [];
-				var rivers = [];
-				for (var i = 0; i < size; i++) {
-					for (var j = 0; j < size; j++) {
-						sites.push({
-							'id': i * size + j,
-							'x': i * 500 / (size - 1) + 150,
-							'y': j * 500 / (size - 1) + 50
+		function gen_grid(n, m) {
+			var sites = [];
+			var rivers = [];
+			var mines = [];
+			for (var i = 0; i < n; i++) {
+				for (var j = 0; j < n; j++) {
+					sites.push({
+						'id': i * n + j,
+						'x': i * 500 / (n - 1) + 150,
+						'y': j * 500 / (n - 1) + 50
+					});
+					if (j + 1 < n) {
+						rivers.push({
+							'source': i * n + j,
+							'target': i * n + j + 1,
 						});
-						if (j + 1 < size) {
-							rivers.push({
-								'source': i * size + j,
-								'target': i * size + j + 1,
-							});
-						}
-						if (i + 1 < size) {
-							rivers.push({
-								'source': i * size + j,
-								'target': (i + 1) * size + j,
-							});
-						}
+					}
+					if (i + 1 < n) {
+						rivers.push({
+							'source': i * n + j,
+							'target': (i + 1) * n + j,
+						});
 					}
 				}
-				map = { 'mines': [], 'rivers': rivers, 'sites': sites };
-				refreshIndices();
-				output();
-				draw();
 			}
+			for (var i = 0; i < m; i++) {
+				mines.push(sites[Math.floor(Math.random() * sites.length)].id);
+			}
+			map = { 'mines': mines, 'rivers': rivers, 'sites': sites };
+			refreshIndices();
+			output();
+			draw();
+		}
+
+		grid.addEventListener('submit', function(e) {
+			var n = parseInt(document.getElementById('grid_n').value);
+			var m = parseInt(document.getElementById('grid_m').value);
+			gen_grid(n,m);
+			e.preventDefault();
 		});
 
 		draw();
