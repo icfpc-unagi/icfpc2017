@@ -18,8 +18,38 @@ G to_directed_graph(G&& g) {
   ret.erase(unique(ret.begin(), ret.end()), ret.end());
   return G(ret);
 }
-
 }  // hogeee
+
+namespace {
+pair<int, int> Greedy(const GameState &game) {
+  map<pair<int, int>, int> score;
+
+  Graph G = ConstructGraph(game), H;
+  UnionFind uf;
+  tie(H, uf) = ConstructContractedGraph(G, game.rank);
+  int N = G.size();
+
+  for (int mine: game.map.mines) {
+    auto dst1 = SSSP(G, mine);
+    vector<double> component_score(N);
+    rep (v, N) component_score[uf.root[v]] += dst1[v].first * dst1[v].first;
+
+    int root = uf.root[mine];
+    for (auto &e : H[root]) {
+      score[mp(min(root, e.to), max(root, e.to))] += component_score[e.to];
+    }
+  }
+
+  tuple<int, int, int> bst(-1, -1, -1);
+  for (auto &i : score) bst = max(bst, make_tuple(i.second, i.first.first, i.first.second));
+
+  if (get<0>(bst) != -1) {
+    return FindOriginalEdge(get<1>(bst), get<2>(bst), uf, G);
+  } else {
+    return RandomRemaining(game);
+  }
+}
+}
 
 namespace {
 struct MyAIState {
@@ -92,6 +122,8 @@ MyAIState Setup(const GameState &game) {
 }
 
 pair<pair<int, int>, MyAIState> Play(const MyState &state) {
+  // return make_pair(Greedy(state.game), state.ai);
+
   JLOG_PUT_BENCHMARK("time") {
     game = state.game;
     G = ConstructGraph(game);
@@ -104,9 +136,9 @@ pair<pair<int, int>, MyAIState> Play(const MyState &state) {
 
     auto dst2 = SSSP(H, S);
     if (dst2[T].second == -1 || dst2[T].first == 0) {
-      // TODO
-      cerr << "MOUDAMEPO" << endl;
-      return make_pair(RandomRemaining(state.game), state.ai);
+      if (dst2[T].second == -1) cerr << "M O U D A M E P O !!!" << endl;
+      else cerr << "S U C C E S S !!!" << endl;
+      return make_pair(Greedy(state.game), state.ai);
     }
 
     vector<int> shortest_path;
@@ -150,6 +182,49 @@ pair<pair<int, int>, MyAIState> Play(const MyState &state) {
   assert(false);
 }
 }  // namespace
+
+template<typename AIState, typename SetupFunc, typename PlayFunc>
+void RunWithFutures(SetupFunc setup, PlayFunc play) {
+  using MyState = State<AIState>;
+
+  // Input
+  json11::Json in_json = InputJSON(), out_json;
+
+  if (IsSetup(in_json)) {
+    // Setup
+    MyState s;
+    vector<pair<int, int>> futures;
+    s.game = ConstructGameState(in_json);
+    tie(s.ai, futures) = setup(s.game);
+
+    vector<json11::Json> futures_json;
+    for (auto &f : futures) {
+      futures_json.emplace_back(
+          json11::Json::object{{"source", f.first}, {"target", f.second}});
+    }
+
+    out_json = json11::Json::object{
+      {"ready", s.game.rank},
+      {"state", DumpState(s)},
+      //{"futures", futures_json},
+    };
+  } else {
+    // Play
+    MyState s = GetState<AIState>(in_json);
+    pair<pair<int, int>, AIState> res = play(s);
+    s.ai = res.second;
+
+    out_json = json11::Json::object{
+      {"claim", json11::Json::object{
+          {"punter", s.game.rank},
+          {"source", s.game.map.sites[res.first.first].id},
+          {"target", s.game.map.sites[res.first.second].id}}},
+      {"state", DumpState(s) }};
+  }
+
+  // Output
+  OutputJSON(out_json);
+}
 
 int main() {
   srand(getpid() * time(NULL));
