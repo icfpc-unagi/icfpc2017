@@ -15,11 +15,14 @@ function Error($message) {
 
 $host = getenv('PUNTER_HOST') ?: 'punter.inf.ed.ac.uk';
 $port = getenv('PUNTER_PORT') ?: Fatal('PUNTER_PORT must be specified.');
+Message('0;32', "Connecting to server $host:$port...");
 $fp = fsockopen($host, $port);
 if (!$fp) {
   Fatal("Failed to connect $host:$port.");
 }
+Message('0;32', "Connected.");
 $punter = getenv('PUNTER') ?: Fatal('PUNTER must be specified,');
+$handshake = boolval(getenv('PUNTER_HANDSHAKE'));
 
 function Command($command) {
   fwrite(STDOUT, rtrim($command, "\r\n") . "\n");
@@ -67,11 +70,25 @@ function WriteToServer($object) {
 }
 
 function RunAi($command) {
-  global $punter;
+  global $punter, $handshake;
   Message('0;34', "Write to AI: " . json_encode($command) . "\n");
   if ($punter != '-') {
     $start_time = microtime(TRUE);
     $proc = proc_open($punter, [['pipe', 'r'], ['pipe', 'w']], $pipes);
+    if ($handshake) {
+      $input = fgets($pipes[1], 10000);
+      $result = explode(':', $input, 2);
+      if (count($result) != 2) {
+        Fatal("AI must output a handshake formatted as 'bytes:json', " .
+              "but: '$input'");
+      }
+      $me = json_decode($result);
+      if (!isset($me['me'])) {
+        Fatal('Handshake must contain me field: ' . $result);
+      }
+      $json = json_encode(['you' => $me['me']]) . "\n";
+      fwrite($pipes[0], strlen($json) . ":$json");
+    }
     $json = json_encode($command) . "\n";
     fwrite($pipes[0], strlen($json) . ":$json");
     fflush($pipes[0]);
@@ -109,6 +126,7 @@ function GetRiverId($source, $target) {
 function Main() {
   $name = getenv('PUNTER_NAME') ?: 'U Punter';
 
+  Message('0;32', "Handshaking with server...");
   WriteToServer(['me' => $name]);
   $you = ReadFromServer();
   if ($you['you'] !== $name) {
@@ -116,6 +134,7 @@ function Main() {
           json_encode($you));
   }
 
+  Message('0;32', "Reading setup from server...");
   $setup = ReadFromServer();
   if (!isset($setup['punter'])) {
     Fatal('setup response must have punter field.');
