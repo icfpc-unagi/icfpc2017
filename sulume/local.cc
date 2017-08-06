@@ -183,7 +183,6 @@ class Game {
                     .count();
       if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
         LOG(WARNING) << "Deadline exceeded: " << cmd;
-        dead_ais_[p] = true;
         return Json();
       }
       LOG_IF(WARNING, ms > 1000)
@@ -230,7 +229,10 @@ class Game {
                              {"state", states_[p]}};
     Json got = io_once(ais_[p], send, FLAGS_timeout);
     bool illegal = false;
-    if (!got["claim"].is_null()) {
+    if (got.is_null()) {
+      dead_ais_[p] = true;
+      illegal = true;
+    } else if (!got["claim"].is_null()) {
       const auto& claim = got["claim"];
       int s = claim["source"].int_value();
       int t = claim["target"].int_value();
