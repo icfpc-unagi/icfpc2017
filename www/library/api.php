@@ -4,6 +4,8 @@ require_once(dirname(__FILE__) . '/config.php');
 // define('DEBUG_MODE', 'sql');
 define('API_HOST', 'http://db.sx9.jp');
 
+$STYLESHEET = '';
+
 function Fail($message, $status = '400 Bad Request') {
   header('HTTP/1.1 ' . $status);
   echo trim($message) . "\n";
@@ -195,6 +197,7 @@ function RenderPage($buffer) {
   $output .= '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">';
   $output .= '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">';
   $output .= '<style>table.layout { width: 100%; table-layout: fixed } table.layout > tbody > tr > td { padding: 20px; vertical-align: top; } .pending { color: #aaa } </style>';
+  $output .= "<style>{$GLOBALS['STYLESHEET']}</style>\n";
   $output .= '</head><body>';
   $output .= '<nav class="navbar navbar-default">
       <div class="container">
@@ -205,23 +208,23 @@ function RenderPage($buffer) {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="./">🐍 Team Unagi</a>
+          <a class="navbar-brand" href="/">🐍 Team Unagi</a>
         </div>
         <div class="collapse navbar-collapse" id="navbar-collapse">
           <ul class="nav navbar-nav">
             
             <li class="False">
-              <a href="./">
+              <a href="/">
                 順位表
               </a>
             </li>
             <li class="False">
-              <a href="latest_battles.php">
+              <a href="/latest_battles.php">
                 最新バトル一覧
               </a>
             </li>
             <li class="False">
-              <a href="queue.php">
+              <a href="/queue.php">
                 処理キュー状況
               </a>
             </li>
