@@ -8,7 +8,7 @@ struct AI {
 }
 
 pub fn setup(state: &mut State) {
-	eprintln!("weighted");
+	eprintln!("connected");
 	state.ai = ::serde_json::to_string(&AI { turn: state.my }).unwrap();
 }
 
@@ -97,10 +97,29 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
-	let mut e = 0;
+	let mut connected = vec![false; n];
+	for &v in &state.mines {
+		connected[v] = true;
+	}
+	for e in 0..m {
+		if user[e] == state.my {
+			connected[state.es[e].0] = true;
+			connected[state.es[e].1] = true;
+		}
+	}
+	let mut e = !0;
 	for i in 0..m {
-		if score[e] < score[i] {
-			e = i;
+		if connected[state.es[i].0] || connected[state.es[i].1] {
+			if e == !0 || score[e] < score[i] {
+				e = i;
+			}
+		}
+	}
+	if e == !0 {
+		for i in 0..m {
+			if e == !0 || score[e] < score[i] {
+				e = i;
+			}
 		}
 	}
 	debug!(score[e]);
