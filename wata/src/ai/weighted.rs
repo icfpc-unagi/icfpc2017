@@ -4,16 +4,19 @@ use ::State;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct AI {
+	turn: usize
 }
 
 pub fn setup(state: &mut State) {
 	eprintln!("lightning");
-	state.ai = "".to_owned();
+	state.ai = ::serde_json::to_string(&AI { turn: state.my }).unwrap();
 }
 
 const R: usize = 10;
 
 pub fn play(state: &mut State) -> usize {
+	let ai: AI = ::serde_json::from_str(&state.ai).unwrap();
+	state.ai = ::serde_json::to_string(&AI { turn: ai.turn + state.p }).unwrap();
 	let g = state.graph.iter().map(|u| u.iter().map(|&(v, _)| v).collect()).collect();
 	let dist: Vec<_> = state.mines.iter().map(|&v| ::lib::bfs(&g, v)).collect();
 	let n = state.graph.len();
@@ -73,8 +76,8 @@ pub fn play(state: &mut State) -> usize {
 				for u in list.into_iter().rev() {
 					if dp[u].0 > 0.0 {
 						if dists[q][i][u] <= dist[i][u] {
-							// sum[u] += (dist[i][u] * dist[i][u]) as f64;
-							sum[u] += (dist[i][u] * dist[i][u]) as f64 * 0.9f64.powf(dp[u].0);
+							sum[u] += (dist[i][u] * dist[i][u]) as f64;
+							// sum[u] += (dist[i][u] * dist[i][u]) as f64 * 0.9f64.powf(dp[u].0);
 						}
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (::std::f64::consts::E + dp[u].0).ln();
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (1.0 + dp[u].0);
