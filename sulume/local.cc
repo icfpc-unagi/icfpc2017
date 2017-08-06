@@ -246,14 +246,13 @@ class Game {
         punter_river_adj_[p][t_i].push_back(s_i);
         last_moves_[p] = Json::object{{"claim", claim}};
       }
-    } else if (FLAGS_splurges && !got["splurges"].is_null()) {
-      const auto& splurges = got["splurges"];
-      if (splurges["punter"].int_value() != p) {
-        LOG(ERROR) << "invalid splurges [" << ais_[p]
-                   << "]: " << splurges.dump();
+    } else if (FLAGS_splurges && !got["splurge"].is_null()) {
+      const auto& splurge = got["splurge"];
+      if (splurge["punter"].int_value() != p) {
+        LOG(ERROR) << "invalid splurge [" << ais_[p] << "]: " << splurge.dump();
         illegal = true;
       } else {
-        auto route = splurges["route"].array_items();
+        auto route = splurge["route"].array_items();
         if (route.size() > prior_passes_[p]) {
           LOG(ERROR) << "not enough credit to splourge " << route.size();
           illegal = true;
@@ -266,8 +265,8 @@ class Game {
             int ri =
                 FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
             if (ri < 0) {
-              LOG(ERROR) << "invalid splurges [" << ais_[p]
-                         << "]: " << got["splurges"].dump();
+              LOG(ERROR) << "invalid splurge [" << ais_[p]
+                         << "]: " << got["splurge"].dump();
               illegal = true;
               break;
             } else if (river_claimed_[ri]) {
@@ -287,7 +286,7 @@ class Game {
               punter_river_adj_[p][s_i].push_back(t_i);
               punter_river_adj_[p][t_i].push_back(s_i);
             }
-            last_moves_[p] = Json::object{{"splurges", got["splurges"]}};
+            last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
         }
       }

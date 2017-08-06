@@ -4,7 +4,7 @@ require_once(dirname(__FILE__) . '/../library/api.php');
 
 $map = Database::SelectRow('
     SELECT map_id, map_capacity, RAND() / map_weight AS map_weight
-    FROM map ORDER BY map_weight LIMIT 1');
+    FROM map WHERE map_weight > 0 ORDER BY map_weight LIMIT 1');
 
 $ais = Database::Select('
     SELECT ai_id, ai_key, ai_is_important, RAND() / ai_weight AS ai_weight
