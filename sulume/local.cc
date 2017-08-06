@@ -254,7 +254,8 @@ class Game {
       } else {
         auto route = splurge["route"].array_items();
         if (route.size() > prior_passes_[p] + 2) {
-          LOG(ERROR) << "not enough credit to splourge " << route.size();
+          LOG(ERROR) << "not enough credit to splourge " << route.size() - 1
+                     << " but had " << prior_passes_[p];
           illegal = true;
         } else {
           vector<int> rs;
