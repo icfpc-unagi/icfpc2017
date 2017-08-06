@@ -73,8 +73,9 @@ MyAIState Setup(const GameState &game) {
     }
 
     int max_connectivity = 0;
-    rep (i, 10) max_connectivity = max(max_connectivity, get<1>(ord[i]));
-    rep (i, 10) {
+    const int TopK = 1;
+    rep (i, TopK) max_connectivity = max(max_connectivity, get<1>(ord[i]));
+    rep (i, TopK) {
       if (get<1>(ord[i]) == max_connectivity) {
         cerr << ord[i] << endl;
         int s = get<2>(ord[i]), t = get<3>(ord[i]);
