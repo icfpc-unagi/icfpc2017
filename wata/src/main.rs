@@ -172,6 +172,7 @@ fn main() {
 	*STIME() = ::std::time::SystemTime::now();
 	use std::io::Read;
 	let mut input = String::new();
+	// TODO: n:
 	std::io::stdin().read_line(&mut input).unwrap();
 	let p = input.find(':').unwrap() + 1;
 	input = input[p..].to_owned();
