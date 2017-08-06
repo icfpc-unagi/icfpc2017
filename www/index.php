@@ -4,13 +4,20 @@ require_once(dirname(__FILE__) . '/library/api.php');
 
 StartPage();
 
+$current_limit = min(10000, @intval($_GET['limit']) ?: 5000);
+
 echo '<h2>順位表</h2>';
+echo '<ul class="nav nav-tabs">';
+foreach ([5000, 3000, 1000, 10000] as $limit) {
+  echo '<li role="presentation"' . (($limit == $current_limit) ? ' class="active"' : '') . "><a href=\"?limit=$limit\">最新 $limit 件</a></li>\n";
+}
+echo "</ul><br>\n";
 echo '<div class="container">';
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_battle
     SELECT battle_id
-    FROM battle ORDER BY battle_created DESC LIMIT 5000');
+    FROM battle ORDER BY battle_created DESC LIMIT ' . $current_limit);
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_ai
@@ -92,6 +99,7 @@ foreach ($average_scores as $map_id => $scores) {
     return 0;
   });
   foreach ($scores as $ai_id => $score) {
+    if ($ais[$ai_id]['ai_weight'] <= 0) continue;
     $ais[$ai_id]['maps'][$map_id] =
         $score + ['rank' => @++$num_ranked_ais[$map_id]];
   }
@@ -121,6 +129,7 @@ echo "</tr>\n";
 
 foreach (array_keys($ais) as $rank => $ai_id) {
   $ai = $ais[$ai_id];
+  if ($ai['ai_weight'] <= 0) continue;
   echo "<tr><td>" . ($rank + 1) . " 位 (";
   echo sprintf("%+.2f", $ai['ai_score']) . ")<br>";
   echo "<b>{$ai['ai_key']}</b></td>";
