@@ -85,6 +85,17 @@ pub struct State {
 	ai: String
 }
 
+macro_rules! ai {
+	($ai:ident, $state:ident, $f:ident;$($name:ident),*) => (
+		match $ai {
+			$(
+				stringify!($name) => ai::$name::$f(&mut $state),
+			)*
+			_ => panic!("unknown ai: {}", $ai)
+		}
+	)
+}
+
 fn setup(input: Input, ai: &str) -> Ready {
 	let mut names = vec![];
 	let map = input.map.unwrap();
@@ -111,19 +122,7 @@ fn setup(input: Input, ai: &str) -> Ready {
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
 	let mut state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
-	if ai == "greedy" {
-		ai::greedy::setup(&mut state);
-	} else if ai == "randw" {
-		ai::randw::setup(&mut state);
-	} else if ai == "obst" {
-		ai::obst::setup(&mut state);
-	} else if ai == "lightning" {
-		ai::lightning::setup(&mut state);
-	} else if ai == "shortest" {
-		ai::shortest::setup(&mut state);
-	} else {
-		panic!("unknown ai: {}", ai);
-	}
+	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, farthest, weighted);
 	Ready { ready: my, state }
 }
 
@@ -149,19 +148,7 @@ fn play(input: Input, ai: &str) -> Play {
 			state.moves.push(last[(state.my + i) % state.p]);
 		}
 	}
-	let e = if ai == "greedy" {
-		ai::greedy::play(&mut state)
-	} else if ai == "randw" {
-		ai::randw::play(&mut state)
-	} else if ai == "obst" {
-		ai::obst::play(&mut state)
-	} else if ai == "lightning" {
-		ai::lightning::play(&mut state)
-	} else if ai == "shortest" {
-		ai::shortest::play(&mut state)
-	} else {
-		panic!("unknown ai: {}", ai);
-	};
+	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, farthest, weighted);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.moves.push(Some(e));
 	eprintln!("{}: {} {}", state.my, claim.source, claim.target);

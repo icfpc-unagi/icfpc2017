@@ -4,13 +4,20 @@ require_once(dirname(__FILE__) . '/library/api.php');
 
 StartPage();
 
+$current_limit = min(10000, @intval($_GET['limit']) ?: 5000);
+
 echo '<h2>順位表</h2>';
+echo '<ul class="nav nav-tabs">';
+foreach ([5000, 3000, 1000, 10000] as $limit) {
+  echo '<li role="presentation"' . (($limit == $current_limit) ? ' class="active"' : '') . "><a href=\"?limit=$limit\">最新 $limit 件</a></li>\n";
+}
+echo "</ul><br>\n";
 echo '<div class="container">';
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_battle
     SELECT battle_id
-    FROM battle ORDER BY battle_created DESC LIMIT 5000');
+    FROM battle ORDER BY battle_created DESC LIMIT ' . $current_limit);
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_ai
@@ -73,7 +80,7 @@ foreach ($records as $map_id => $map_records) {
   foreach ($map_records as $ai_id => $ai_records) {
     $scores = [];
     foreach ($ai_records as $record) {
-      $scores[] = ($record['punter_index'] - ($map_capacity - 1) / 2) * 0.5 +
+      $scores[] = ($record['punter_index'] - ($map_capacity - 1) / 2) * 0 +
                   ($record['punter_rank'] - ($map_capacity - 1) / 2) * -1;
     }
     $score_info =
@@ -92,6 +99,7 @@ foreach ($average_scores as $map_id => $scores) {
     return 0;
   });
   foreach ($scores as $ai_id => $score) {
+    if ($ais[$ai_id]['ai_weight'] <= 0) continue;
     $ais[$ai_id]['maps'][$map_id] =
         $score + ['rank' => @++$num_ranked_ais[$map_id]];
   }
@@ -100,26 +108,31 @@ foreach ($average_scores as $map_id => $scores) {
 foreach ($ais as $ai_id => $ai) {
   $ai_score = 0;
   foreach ($maps as $map) {
-    $ai_score += isset($ai['maps'][$map['map_id']]) ? $ai['maps'][$map['map_id']]['rank'] : count($ais);
+    $ai_score += isset($ai['maps'][$map['map_id']]) ?
+        $ai['maps'][$map['map_id']]['rank_average'] :
+        $maps[$map['map_id']]['map_capacity'] / -2;
   }
-  $ais[$ai_id]['ai_score'] = $ai_score;
+  $ais[$ai_id]['ai_score'] = $ai_score / count($maps);
 }
 uasort($ais, function($lhs, $rhs) {
-  if ($lhs['ai_score'] < $rhs['ai_score']) return -1;
-  if ($lhs['ai_score'] > $rhs['ai_score']) return 1;
+  if ($lhs['ai_score'] > $rhs['ai_score']) return -1;
+  if ($lhs['ai_score'] < $rhs['ai_score']) return 1;
   return 0;
 });
 
 echo "<div style=\"overflow-x:scroll\"><table class=\"table table-striped table-bordered\" style=\"table-layout:fixed\">\n";
-echo '<tr><th style="width: 12em">AI名</th>';
+echo '<tr><th style="width: 15em">AI名</th>';
 foreach ($maps as $map) {
-  echo "<th style=\"width: 7em; word-wrap:break-word;\">{$map['map_key']}</th>";
+  echo "<th style=\"width: 8em; word-wrap:break-word;\">{$map['map_key']}</th>";
 }
 echo "</tr>\n";
 
 foreach (array_keys($ais) as $rank => $ai_id) {
   $ai = $ais[$ai_id];
-  echo "<tr><td>" . ($rank + 1) . " 位 … {$ai['ai_key']}</td>";
+  if ($ai['ai_weight'] <= 0) continue;
+  echo "<tr><td>" . ($rank + 1) . " 位 (";
+  echo sprintf("%+.2f", $ai['ai_score']) . ")<br>";
+  echo "<b>{$ai['ai_key']}</b></td>";
   foreach ($maps as $map) {
     if (!isset($ai['maps'][$map['map_id']])) {
       echo '<td>データなし</td>';

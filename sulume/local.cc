@@ -1,3 +1,4 @@
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -21,6 +22,8 @@ DEFINE_bool(dot_all, false, "output dot for all steps");
 DEFINE_double(scale, 5.0, "dot scale");
 DEFINE_bool(futures, true, "enable futures extension");
 DEFINE_string(listener, "", "step listener");
+DEFINE_bool(say_you, false, "use strict handshake");
+DEFINE_bool(splurges, true, "enable splurges extension");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -55,13 +58,14 @@ class Game {
   vector<double> site_y_;
   std::unordered_map<int, int> site_id_to_index_;
   map<pair<int, int>, int> river_to_index_;
-  vector<int> mines_;
-  vector<map<int, int>> futures_;
+  vector<int> mines_;              // as index
+  vector<map<int, int>> futures_;  // as id
 
   vector<Json> states_;
   vector<bool> river_claimed_;
   vector<vector<vector<int>>> punter_river_adj_;
   vector<Json> last_moves_;
+  vector<int> prior_passes_;
 
  public:
   Game(vector<string> ais) : ais_(ais) {}
@@ -111,6 +115,7 @@ class Game {
                              vector<vector<int>>(site_ids_.size()));
     if (FLAGS_futures) futures_.resize(ais_.size());
     states_.resize(ais_.size());
+    prior_passes_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
           Json::object{{"pass", Json::object{{"punter", i}}}});
@@ -128,14 +133,7 @@ class Game {
 
   void start() {
     for (int i = 0; i < ais_.size(); ++i) {
-      auto got = setup(i, ais_.size(), map_json_);
-      states_[i] = got["state"];
-      if (FLAGS_futures) {
-        for (const auto& future : got["futures"].array_items()) {
-          futures_[i].emplace(future["source"].int_value(),
-                              future["target"].int_value());
-        }
-      }
+      setup(i);
     }
     if (!listener_id.empty()) {
       GetResponseOrDie(StreamUtil::Write(
@@ -143,27 +141,8 @@ class Game {
     }
     for (int turn = 0; turn < river_claimed_.size(); ++turn) {
       int i = turn % ais_.size();
-      auto move_state = gameplay(i, last_moves_, states_[i]);
-      const auto& claim = move_state["claim"];
-      int s = claim["source"].int_value();
-      int t = claim["target"].int_value();
-      int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
-      if (ri < 0) {
-        LOG(ERROR) << "invalid river [" << ais_[i] << "]: " << claim.dump();
-        last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
-      } else if (river_claimed_[ri]) {
-        LOG(ERROR) << "river claimed twice [" << ais_[i]
-                   << "]: " << claim.dump();
-        last_moves_[i] = Json::object{{"pass", Json::object{{"punter", i}}}};
-      } else {
-        river_claimed_[ri] = true;
-        int s_i = site_id_to_index_[s];
-        int t_i = site_id_to_index_[t];
-        punter_river_adj_[i][s_i].push_back(t_i);
-        punter_river_adj_[i][t_i].push_back(s_i);
-        last_moves_[i] = Json::object{{"claim", claim}};
-      }
-      states_[i] = move_state["state"];
+      gameplay(i);
+
       if (!FLAGS_dot.empty() && FLAGS_dot_all) {
         gen_dot(part_filename(FLAGS_dot, turn));
       }
@@ -182,22 +161,40 @@ class Game {
  private:
   static Json io_once(const string& cmd, const Json& in, int timeout) {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
+    if (FLAGS_say_you) {
+      string err;
+      Json me = Json::parse(
+          GetResponseOrDie(StreamUtil::Read(id, timeout)).data, err)["me"];
+      CHECK(err.empty()) << "parse error: " << err;
+      CHECK(!me.is_null());
+      string you = Json(Json::object{{"you", me}}).dump();
+      GetResponseOrDie(StreamUtil::Write(id, StrCat(you.size(), ":", you)));
+    }
     string send = in.dump();
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
-    auto response = StreamUtil::Read(id, timeout);
-    if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
-      LOG(WARNING) << "Deadline exceeded: " << cmd;
-      return Json();
-    }
-    string recv = GetResponseOrDie(response).data;
+    Json out;
+    do {
+      auto t1 = std::chrono::high_resolution_clock::now();
+      auto response = StreamUtil::Read(id, timeout);
+      auto t2 = std::chrono::high_resolution_clock::now();
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+                    .count();
+      LOG_IF(WARNING, ms > 1000)
+          << " took " << ms << "ms; would exceed deadline!";
+      if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
+        LOG(WARNING) << "Deadline exceeded: " << cmd;
+        return Json();
+      }
+      string recv = GetResponseOrDie(response).data;
+      size_t i = recv.find(':');
+      CHECK_NE(i, string::npos) << "missing prefix: " << recv;
+      uint32 n;
+      CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
+      string err;
+      out = Json::parse(recv.substr(i + 1), err);
+      CHECK(err.empty()) << "parse error: " << err;
+    } while (!out["me"].is_null());
     GetResponseOrDie(StreamUtil::Kill(id));
-    size_t i = recv.find(':');
-    CHECK_NE(i, string::npos) << "missing prefix: " << recv;
-    uint32 n;
-    CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
-    string err;
-    Json out = Json::parse(recv.substr(i + 1), err);
-    CHECK(err.empty()) << "parse error: " << err;
     return out;
   }
 
@@ -206,33 +203,103 @@ class Game {
         {"punter", p},
         {"punters", total},
         {"map", map_json},
-        {"settings", FLAGS_futures ? Json::object{{"futures", true}} : Json()}};
+        {"settings", Json::object{{"futures", FLAGS_futures},
+                                  {"splurges", FLAGS_splurges}}}};
   }
 
-  // state
-  Json setup(int p, int total, Json map_json) {
+  void setup(int p) {
     // S → P {"punter" : p, "punters" : n, "map" : map}
     // P → S {"ready" : p, "state" : state}
-    Json got = io_once(ais_[p], setup_json(p, total, map_json), 10000);
+    Json got = io_once(ais_[p], setup_json(p, ais_.size(), map_json_), 10000);
     CHECK_EQ(got["ready"].int_value(), p);
-    return got;
+    states_[p] = got["state"];
+    if (FLAGS_futures) {
+      for (const auto& future : got["futures"].array_items()) {
+        futures_[p].emplace(future["source"].int_value(),
+                            future["target"].int_value());
+      }
+    }
   }
 
-  // move
-  Json gameplay(int p, const Json::array& moves, const Json& state) {
-    // S → P {"punter" : p, "punters" : n, "map" : map}
-    // P → S {"ready" : p, "state" : state}
-    Json send = Json::object{{"move", Json::object{{"moves", moves}}},
-                             {"state", state}};
+  void gameplay(int p) {
+    Json send = Json::object{{"move", Json::object{{"moves", last_moves_}}},
+                             {"state", states_[p]}};
     Json got = io_once(ais_[p], send, FLAGS_timeout);
-    const auto& claim = got["claim"];
-    if (claim["punter"].int_value() != p || !claim["source"].is_number() ||
-        !claim["target"].is_number()) {
-      LOG(ERROR) << ais_[p] << " invalid claim: " << claim.dump();
-      return Json::object{{"pass", Json::object{{"punter", p}}},
-                          {"state", got["state"]}};
+    bool illegal = false;
+    if (!got["claim"].is_null()) {
+      const auto& claim = got["claim"];
+      int s = claim["source"].int_value();
+      int t = claim["target"].int_value();
+      int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
+      if (ri < 0 || claim["punter"].int_value() != p) {
+        LOG(ERROR) << "invalid claim [" << ais_[p] << "]: " << claim.dump();
+        illegal = true;
+      } else if (river_claimed_[ri]) {
+        LOG(ERROR) << "river claimed twice [" << ais_[p]
+                   << "]: " << claim.dump();
+        illegal = true;
+      } else {
+        river_claimed_[ri] = true;
+        int s_i = site_id_to_index_[s];
+        int t_i = site_id_to_index_[t];
+        punter_river_adj_[p][s_i].push_back(t_i);
+        punter_river_adj_[p][t_i].push_back(s_i);
+        last_moves_[p] = Json::object{{"claim", claim}};
+      }
+    } else if (FLAGS_splurges && !got["splurges"].is_null()) {
+      const auto& splurges = got["splurges"];
+      if (splurges["punter"].int_value() != p) {
+        LOG(ERROR) << "invalid splurges [" << ais_[p]
+                   << "]: " << splurges.dump();
+        illegal = true;
+      } else {
+        auto route = splurges["route"].array_items();
+        if (route.size() > prior_passes_[p]) {
+          LOG(ERROR) << "not enough credit to splourge " << route.size();
+          illegal = true;
+        } else {
+          vector<int> rs;
+          vector<pair<int, int>> sts;
+          for (int i = 0; i + 1 < route.size(); ++i) {
+            int s = route[i].int_value();
+            int t = route[i + 1].int_value();
+            int ri =
+                FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
+            if (ri < 0) {
+              LOG(ERROR) << "invalid splurges [" << ais_[p]
+                         << "]: " << got["splurges"].dump();
+              illegal = true;
+              break;
+            } else if (river_claimed_[ri]) {
+              LOG(ERROR) << "river claimed twice [" << ais_[p] << "]: " << s
+                         << "-" << t;
+              illegal = true;
+              break;
+            }
+            rs.push_back(ri);
+            sts.emplace_back(s, t);
+          }
+          if (!illegal) {
+            for (int ri : rs) river_claimed_[ri] = true;
+            for (const auto& st : sts) {
+              int s_i = site_id_to_index_[st.first];
+              int t_i = site_id_to_index_[st.second];
+              punter_river_adj_[p][s_i].push_back(t_i);
+              punter_river_adj_[p][t_i].push_back(s_i);
+            }
+            last_moves_[p] = Json::object{{"splurges", got["splurges"]}};
+          }
+        }
+      }
+    } else if (!got["pass"].is_null()) {
+      prior_passes_[p]++;
+    } else {
+      LOG(ERROR) << "Couldn't recognize move: " << got.dump();
     }
-    return got;
+    if (illegal) {
+      last_moves_[p] = Json::object{{"pass", Json::object{{"punter", p}}}};
+    }
+    states_[p] = got["state"];
   }
 
   void score() {

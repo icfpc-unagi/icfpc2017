@@ -79,18 +79,100 @@ vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
   return dst;
 }
 
-/*
-UnionFind MergeSameDistanceLayersPlayer
-(const Graph &g, const vector<pair<int, int>> &dst, int rank) {
-  UnionFind uf(g.size());
+pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank) {
+  int n = g.size();
+  UnionFind uf(n);
+  rep (v, n) for (const auto &e : g[v]) {
+    if (e.owner == rank) uf.Merge(v, e.to);
+  }
 
-  rep (v, N) {
-    for (const auto &e : g[v]) {
-      if (e.owner >= 0 && e.owner != rank) continue;
-      if (dst[v].first != dst[e.to].first) continue;
-      uf.merge(v, e.to);
+  set<pair<int, int>> es;
+  rep (v, n) for (const auto &e : g[v]) {
+    if (e.owner == -1) {
+      int a = uf.root[v];
+      int b = uf.root[e.to];
+      if (a == b) continue;
+      es.emplace(a, b);
     }
   }
-  return uf;
+
+  Graph h(n);
+  for (const auto &e : es) {
+    h[e.first ].emplace_back(Edge{e.second, -1});
+    h[e.second].emplace_back(Edge{e.first, -1});
+  }
+  return make_pair(h, uf);
 }
-*/
+
+// NOTE: Give me contracted graph!!!
+void SingleSourceWeightedBetweenness
+(Graph &g, int s, int distance_limit, const vector<double> &weight) {
+  // https://github.com/flowlight0/fully-dynamic-betweenness-centrality/blob/master/src/algorithm/centrality_brandes.cpp
+  int V = g.size();
+  auto &forward_adj = g;
+
+  vector<int>    distance(V, -1);
+  vector<double> num_paths(V, 0);
+  vector<double> delta(V, 0);
+  vector<int>    order;
+  queue<int>     que;
+
+  distance[s] = 0;
+  num_paths[s] = 1;
+  que.push(s);
+
+  while (!que.empty()){
+    int v = que.front();
+    que.pop();
+    order.push_back(v);
+
+    if (distance[v] >= distance_limit) continue;
+
+    for (const auto &e : forward_adj[v]){
+      int w = e.to;
+      if (distance[w] == -1){
+        distance[w] = distance[v] + 1;
+        que.push(w);
+      }
+
+      if (distance[w] == distance[v] + 1){
+        num_paths[w] += num_paths[v];
+      }
+    }
+  }
+
+  rep (v, V) if (num_paths[v] > 0) cerr << v << " " << distance[v] << " " << num_paths[v] << "; ";
+  cerr << endl;
+
+  reverse(order.begin(), order.end());
+  for (int v : order){
+    for (auto &e : forward_adj[v]) {
+      int w = e.to;
+      if (distance[w] == distance[v] + 1 && num_paths[w] > 0){
+        // delta[v] += num_paths[v] / num_paths[w];
+        // delta[v] += num_paths[v] / num_paths[w] * delta[w];
+
+        double val = 0;
+        val += num_paths[v] / num_paths[w] * weight[w];
+        val += num_paths[v] / num_paths[w] * delta[w];
+        e.score += val;
+        delta[v] = val;
+      }
+    }
+  }
+}
+
+pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g) {
+  set<pair<int, int>> es;
+  rep (v, original_g.size()) for (const auto &e : original_g[v]) {
+    if (e.owner == -1) es.emplace(min(v, e.to), max(v, e.to));
+  }
+
+  for (int v : uf.vertices[a]) {
+    for (int w : uf.vertices[b]) {
+      if (es.count(make_pair(min(v, w), max(v, w)))) {
+        return make_pair(v, w);
+      }
+    }
+  }
+}

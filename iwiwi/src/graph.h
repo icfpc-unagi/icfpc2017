@@ -4,6 +4,7 @@
 struct Edge {
   int to;
   int owner;
+  double score;  // Used for some scoring (e.g., betweenness centrality)
 
   bool Available(int rank) const {
     return owner == -1 || owner == rank;
@@ -20,7 +21,14 @@ struct UnionFind {  // Union find toha ittenai
   vector<vector<int>> vertices;
   vector<int> root;
 
-  UnionFind(int n) : vertices(n, vector<int>(1)), root(n) {
+  UnionFind(int n = 0) {
+    Init(n);
+  }
+
+  void Init(int n) {
+    vertices.assign(n, vector<int>(1));
+    root.resize(n);
+
     rep (i, n) {
       vertices[i][0] = i;
       root[i] = i;
@@ -41,33 +49,7 @@ struct UnionFind {  // Union find toha ittenai
   }
 };
 
-/*
-struct UnionFind {
-  vector<int> par, siz;
-
-  UnionFind(int n) : par(n), siz(n) {
-    rep (i, n) {
-      par[i] = i;
-      siz[i] = 1;
-    }
-  }
-
-  int Root(int v) {
-    return par[v] == v ? v : par[v] = Root(par[v]);
-  }
-
-  void Merge(int v, int w) {
-    v = Root(v);
-    w = Root(w);
-    if (v == w) continue;
-
-    if (siz[v] < siz[w]) swap(v, w);
-    par[w] = v;
-    siz[v] += siz[w];
-  }
-
-  int Size(int v) {
-    return siz[v];
-  }
-};
-*/
+pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank);
+void SingleSourceWeightedBetweenness
+(Graph &g, int s, int distance_limit, const vector<double> &weight);
+pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g);
