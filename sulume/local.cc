@@ -24,6 +24,7 @@ DEFINE_bool(futures, true, "enable futures extension");
 DEFINE_string(listener, "", "step listener");
 DEFINE_bool(say_you, false, "use strict handshake");
 DEFINE_bool(splurges, true, "enable splurges extension");
+DEFINE_bool(options, true, "enable options extension");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -63,7 +64,7 @@ class Game {
   vector<map<int, int>> futures_;  // as id
 
   vector<Json> states_;
-  vector<bool> river_claimed_;
+  vector<int> rivers_;  // 0: available, 1: claimed, 2: option held
   vector<vector<vector<int>>> punter_river_adj_;
   vector<Json> last_moves_;
   vector<int> prior_passes_;
@@ -105,7 +106,7 @@ class Game {
       CHECK(ContainsKey(site_id_to_index_, t)) << "invalid river";
       river_to_index_.emplace(make_sorted_pair(s, t), i);
     }
-    river_claimed_.resize(rivers.size());
+    rivers_.resize(rivers.size());
     for (const auto& mine : map_json_["mines"].array_items()) {
       int m = mine.int_value();
       CHECK(ContainsKey(site_id_to_index_, m)) << "invalid mine";
@@ -142,7 +143,7 @@ class Game {
       GetResponseOrDie(StreamUtil::Write(
           listener_id, setup_json(-1, ais_.size(), map_json_).dump()));
     }
-    for (int turn = 0; turn < river_claimed_.size(); ++turn) {
+    for (int turn = 0; turn < rivers_.size(); ++turn) {
       int i = turn % ais_.size();
       gameplay(i);
 
@@ -250,12 +251,12 @@ class Game {
       if (ri < 0 || claim["punter"].int_value() != p) {
         LOG(ERROR) << "invalid claim [" << ais_[p] << "]: " << claim.dump();
         error = "invalid claim";
-      } else if (river_claimed_[ri]) {
+      } else if (rivers_[ri] > 0) {
         LOG(ERROR) << "river claimed twice [" << ais_[p]
                    << "]: " << claim.dump();
         error = "river already claimed";
       } else {
-        river_claimed_[ri] = true;
+        rivers_[ri] = 1;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
         punter_river_adj_[p][s_i].push_back(t_i);
@@ -286,7 +287,7 @@ class Game {
                          << "]: " << got["splurge"].dump();
               error = "invalid splurge";
               break;
-            } else if (river_claimed_[ri]) {
+            } else if (rivers_[ri] > 0) {
               LOG(ERROR) << "river claimed twice [" << ais_[p] << "]: " << s
                          << "-" << t;
               error = "river already claimed";
@@ -296,7 +297,7 @@ class Game {
             sts.emplace_back(s, t);
           }
           if (error.empty()) {
-            for (int ri : rs) river_claimed_[ri] = true;
+            for (int ri : rs) rivers_[ri] = 1;
             for (const auto& st : sts) {
               int s_i = site_id_to_index_[st.first];
               int t_i = site_id_to_index_[st.second];
@@ -308,6 +309,28 @@ class Game {
           }
         }
       }
+    } else if (FLAGS_options && !got["option"].is_null()) {
+      const auto& option = got["option"];
+      int s = option["source"].int_value();
+      int t = option["target"].int_value();
+      int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
+      if (ri < 0 || option["punter"].int_value() != p) {
+        LOG(ERROR) << "invalid option [" << ais_[p] << "]: " << option.dump();
+        error = "invalid option";
+      } else if (rivers_[ri] != 1) {
+        LOG_IF(ERROR, rivers_[ri] == 0)
+            << "river is not yet claimed: " << option.dump();
+        LOG_IF(ERROR, rivers_[ri] == 2)
+            << "option is already held: " << option.dump();
+        error = "invalid option";
+      } else {
+        rivers_[ri] = 2;
+        int s_i = site_id_to_index_[s];
+        int t_i = site_id_to_index_[t];
+        punter_river_adj_[p][s_i].push_back(t_i);
+        punter_river_adj_[p][t_i].push_back(s_i);
+        last_moves_[p] = Json::object{{"option", option}};
+      }
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
     } else {
@@ -316,6 +339,7 @@ class Game {
     if (!error.empty()) {
       last_moves_[p] =
           Json::object{{"pass", Json::object{{"punter", p}}}, {"error", error}};
+      prior_passes_[p]++;
     }
     states_[p] = got["state"];
   }
