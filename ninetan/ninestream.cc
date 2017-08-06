@@ -234,6 +234,13 @@ class Stream {
     return Write(data) && Write("\n");
   }
 
+  void Flush() {
+    if (stdin_ < 0) return;
+    LOG(INFO) << "Stream[" << stream_id() << "]: Flushing "
+              << stdin_buffer_.size() << " bytes...";
+    while (!stdin_buffer_.empty() && Write(""));
+  }
+
   static int Poll(const vector<std::unique_ptr<Stream>>& streams,
                   const vector<int>& stream_ids, int timeout = -1) {
     CHECK_GE(timeout, -1);
@@ -428,6 +435,9 @@ class StreamController {
     int64_t deadline_in_micros = WallTimer::GetTimeInMicroSeconds() + 1000000;
     for (auto& stream : streams_) {
       stream->Kill(deadline_in_micros);
+    }
+    for (auto& stream : streams_) {
+      stream->Flush();
     }
   }
 
