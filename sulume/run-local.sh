@@ -26,4 +26,4 @@ else
 fi
 
 ./ninetan/ninestream "${flags[@]}" \
-    --master="./sulume/local --alsologtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} --listener=${FLAGS_listener} $args"
+    --master="./sulume/local --logtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} --listener=${FLAGS_listener} $args"
