@@ -191,7 +191,7 @@ function FormatData($data) {
 
 function RenderPage($buffer) {
   $output = '<!doctype html><html><head><meta charset="UTF-8">';
-  $output .= '<title>ICFPC 2016</title>';
+  $output .= '<title>ICFPC 2017</title>';
   $output .= '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">';
   $output .= '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">';
   $output .= '<style>table.layout { width: 100%; table-layout: fixed } table.layout > tbody > tr > td { padding: 20px; vertical-align: top; } .pending { color: #aaa } </style>';
@@ -205,19 +205,24 @@ function RenderPage($buffer) {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="snapshot.php">🍤 Team Unagi</a>
+          <a class="navbar-brand" href="./">🐍 Team Unagi</a>
         </div>
         <div class="collapse navbar-collapse" id="navbar-collapse">
           <ul class="nav navbar-nav">
             
             <li class="False">
-              <a href="snapshot.php">
-                Leaderboard
+              <a href="./">
+                順位表
               </a>
             </li>
             <li class="False">
-              <a href="list.php">
-                Snapshots
+              <a href="latest_battles.php">
+                最新バトル一覧
+              </a>
+            </li>
+            <li class="False">
+              <a href="queue.php">
+                処理キュー状況
               </a>
             </li>
           </ul>

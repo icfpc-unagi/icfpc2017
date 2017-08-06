@@ -1,0 +1,3 @@
+#!/bin/bash
+
+while :; do "$(dirname "${BASH_SOURCE}")/battle"; sleep 5; done

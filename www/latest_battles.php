@@ -5,8 +5,9 @@ require_once(dirname(__FILE__) . '/library/api.php');
 StartPage();
 
 $battles = [];
-foreach (Database::Select(
-    'SELECT * FROM battle ORDER BY battle_created DESC LIMIT 100') as $battle) {
+foreach (Database::Select('
+    SELECT * FROM battle NATURAL JOIN map
+    ORDER BY battle_created DESC LIMIT 100') as $battle) {
   $battles[$battle['battle_id']] = $battle;
 }
 
@@ -29,7 +30,7 @@ foreach ($battles as $battle) {
   echo "<h3>バトル {$battle['battle_id']}</h3>\n";
   echo "<table class=\"table table-striped table-bordered\" width=\"100%\">\n";
   echo '<tr><td width="20%">バトルID</td><td>' . $battle['battle_id'] . "</td></tr>\n";
-  echo '<tr><td>マップ</td><td>' . $battle['battle_map'] . "</td></tr>\n";
+  echo '<tr><td>マップ</td><td>' . $battle['map_key'] . "</td></tr>\n";
   echo '<tr><td>作成時刻</td><td>' . $battle['battle_created'] . "</td></tr>\n";
   echo '<tr><td>結果</td><td>';
   if (!isset($battle['punters'])) {

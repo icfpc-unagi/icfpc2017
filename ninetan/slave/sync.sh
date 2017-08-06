@@ -1,9 +1,14 @@
 #!/bin/bash
 
+sleep 10
+
 set -e -u
 
 rsync -a --delete --exclude='.git' --delete-excluded master:~/github/ ~/github/
 rsync -a --delete --exclude='.git' --delete-excluded master:~/Dropbox/ICFPC2017/ ~/Dropbox/ICFPC2017/
+sudo mkdir -p /binary
+sudo chown ninetan:ninetan /binary
+rsync -a --delete master:/binary/ /binary/
 
 if ! mountpoint /dropbox; then
   sudo mkdir -p /dropbox
@@ -16,5 +21,3 @@ if ! mountpoint /github; then
   sudo chmod 0755 /github
   sudo mount --rbind /home/ninetan/github /github
 fi
-
-sleep 10
