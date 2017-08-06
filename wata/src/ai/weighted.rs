@@ -24,6 +24,23 @@ pub fn play(state: &mut State) -> usize {
 			user[e] = i % state.p;
 		}
 	}
+	let mut dists = vec![vec![vec![]; state.mines.len()]; state.p];
+	for i in 0..state.p {
+		use ::lib::dijkstra::Graph;
+		let mut g: Graph<usize> = Graph::new(n);
+		for u in 0..n {
+			for &(v, e) in &state.graph[u] {
+				if user[e] == i {
+					g.add(u, v, 0);
+				} else if user[e] == !0 {
+					g.add(u, v, 1);
+				}
+			}
+		}
+		for (j, &s) in state.mines.iter().enumerate() {
+			dists[i][j] = g.solve(s).1.into_iter().map(|(d, _)| d).collect();
+		}
+	}
 	use ::rand::Rng;
 	let mut score: Vec<_> = user.iter().map(|&u| if u == !0 { 0.0 } else { -1.0 }).collect();
 	let mut rng = ::rand::XorShiftRng::new_unseeded();
@@ -55,8 +72,11 @@ pub fn play(state: &mut State) -> usize {
 				let mut sum = vec![0.0; n];
 				for u in list.into_iter().rev() {
 					if dp[u].0 > 0.0 {
+						if dists[q][i][u] <= dist[i][u] {
+							sum[u] += (dist[i][u] * dist[i][u]) as f64;
+						}
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (::std::f64::consts::E + dp[u].0).ln();
-						sum[u] += (dist[i][u] * dist[i][u]) as f64  / (1.0 + dp[u].0);
+						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (1.0 + dp[u].0);
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64 * 0.9f64.powf(dp[u].0);
 						let v = dp[u].1;
 						sum[v] += sum[u];
