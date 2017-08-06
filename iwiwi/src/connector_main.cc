@@ -69,7 +69,7 @@ int N;
 Graph G, H;
 UnionFind uf;
 
-MyAIState Setup(const GameState &game) {
+pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
   JLOG_PUT_BENCHMARK("setup") {
     // itsumono
     ::game = game;
@@ -113,7 +113,7 @@ MyAIState Setup(const GameState &game) {
         // agl::cut_tree_internal::dinitz din(aglg);
         // cerr << din.max_flow(s, t) << endl;
 
-        return MyAIState{s, t};
+        return make_pair(MyAIState{s, t}, vector<pair<int, int>>{{s, t}, {t, s}});
       }
     }
   }
@@ -206,8 +206,10 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
     out_json = json11::Json::object{
       {"ready", s.game.rank},
       {"state", DumpState(s)},
-      //{"futures", futures_json},
+      {"futures", futures_json},
     };
+
+    cerr << json11::Json(futures_json).dump() << endl;
   } else {
     // Play
     MyState s = GetState<AIState>(in_json);
@@ -228,6 +230,6 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
 
 int main() {
   srand(getpid() * time(NULL));
-  Run<MyAIState>(Setup, Play);
+  RunWithFutures<MyAIState>(Setup, Play);
   return 0;
 }
