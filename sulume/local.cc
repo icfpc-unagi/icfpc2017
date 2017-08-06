@@ -111,6 +111,7 @@ class Game {
       CHECK(ContainsKey(site_id_to_index_, m)) << "invalid mine";
       mines_.push_back(site_id_to_index_[m]);
     }
+    std::sort(mines_.begin(), mines_.end());
 
     punter_river_adj_.resize(ais_.size(),
                              vector<vector<int>>(site_ids_.size()));
@@ -217,8 +218,17 @@ class Game {
     states_[p] = got["state"];
     if (FLAGS_futures) {
       for (const auto& future : got["futures"].array_items()) {
-        futures_[p].emplace(future["source"].int_value(),
-                            future["target"].int_value());
+        int s = future["source"].int_value();
+        int t = future["target"].int_value();
+        int si = FindWithDefault(site_id_to_index_, s, -1);
+        int ti = FindWithDefault(site_id_to_index_, t, -1);
+        if (si < 0 || ti < 0 || ContainsKey(futures_[p], s) ||
+            !binary_search(mines_.begin(), mines_.end(), si) ||
+            binary_search(mines_.begin(), mines_.end(), ti)) {
+          LOG(ERROR) << "invalid future: " << future.dump();
+        } else {
+          futures_[p].emplace(s, t);
+        }
       }
     }
   }
