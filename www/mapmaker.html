@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>MapMaker</title>
+</head>
+<style>
+main {
+	display: inline-block;
+	vertical-align: top;
+}
+
+#textarea {
+	width: 200px;
+	height: 400px;
+}
+
+#stats {
+	font-size: 10pt;
+	font-family: monospace;
+}
+
+.warn {
+	box-shadow: red 0 0 10px;
+}
+</style>
+
+<body>
+	<h1>MapMaker</h1>
+	<main>
+		<canvas width="800" height="600" border="1" id="canvas"></canvas>
+	</main>
+	<aside style="display:inline-block">
+		<div>click: site
+			<br> meta+click: mine
+			<br> drag: river
+			<br> r-click: delete</div>
+		<div>
+			<input type="button" value="Grid!" id="grid">
+		</div>
+		<div>
+			<textarea id="textarea"></textarea>
+		</div>
+		<div id="stats"></div>
+	</aside>
+	<script>
+	(function() {
+		var textarea = document.getElementById('textarea');
+		var grid = document.getElementById('grid');
+		var stats = document.getElementById('stats');
+
+		var map = { 'mines': [], 'rivers': [], 'sites': [] };
+		var siteIndex = {};
+		var mineIndex = {};
+		var active = -1;
+		var dragSource = -1;
+		var dragTarget = -1;
+		var silenceClick = 0;
+
+		function draw() {
+			var canvas = document.getElementById('canvas');
+			var ctx = canvas.getContext("2d");
+			ctx.fillStyle = 'white';
+			ctx.clearRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+			ctx.beginPath();
+			ctx.rect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+			ctx.strokeStyle = 'black';
+			ctx.stroke();
+
+			map.sites.forEach(function(site, i) {
+				var isMine = mineIndex[site.id] >= 0;
+				ctx.beginPath();
+				ctx.arc(site.x, site.y, active == i ? 7 : 5, 0, 2 * Math.PI);
+				ctx.fillStyle = isMine ? 'red' : 'blue';
+				ctx.fill();
+			});
+			map.rivers.forEach(function(river, i) {
+				var s = map.sites[siteIndex[river.source]];
+				var t = map.sites[siteIndex[river.target]];
+				ctx.beginPath();
+				ctx.moveTo(s.x, s.y);
+				ctx.lineTo(t.x, t.y);
+				ctx.strokeStyle = 'gray';
+				ctx.stroke();
+			});
+			if (dragSource >= 0 && dragTarget >= 0 && dragSource != dragTarget) {
+				var s = map.sites[dragSource];
+				var t = map.sites[dragTarget];
+				ctx.beginPath();
+				ctx.moveTo(s.x, s.y);
+				ctx.lineTo(t.x, t.y);
+				ctx.strokeStyle = 'brown';
+				ctx.stroke();
+			}
+			return ctx;
+		}
+
+		function output() {
+			textarea.value = JSON.stringify(map);
+			textarea.classList.remove('warn');
+			stats.innerText = '# sites = ' + map.sites.length + '\n# mines = ' + map.mines.length + '\n# rivers = ' + map.rivers.length;
+		}
+
+		function findClosestSiteIndex(x, y) {
+			var index = -1;
+			var min = Infinity;
+			map.sites.forEach(function(site, i) {
+				var norm = Math.pow(site.x - x, 2) + Math.pow(site.y - y, 2)
+				if (norm < min) {
+					index = i;
+					min = norm;
+				}
+			});
+			return index;
+		}
+
+		function refreshIndices() {
+			var newMineIndex = {};
+			map.mines.forEach(function(m, i) { newMineIndex[m] = i });
+			mineIndex = newMineIndex;
+			var newSiteIndex = {};
+			map.sites.forEach(function(s, i) { newSiteIndex[s.id] = i });
+			siteIndex = newSiteIndex;
+		}
+
+		canvas.addEventListener('click', function(e) {
+			if (silenceClick == e.timeStamp) return;
+			var site = { 'id': Math.floor(e.timeStamp), 'x': e.offsetX, 'y': e.offsetY };
+			siteIndex[site.id] = map.sites.length;
+			map.sites.push(site);
+			if (e.metaKey) {
+				mineIndex[site.id] = map.mines.length;
+				map.mines.push(site.id);
+			}
+			output();
+			draw();
+		});
+
+		canvas.addEventListener('contextmenu', function(e) {
+			var index = findClosestSiteIndex(e.offsetX, e.offsetY);
+			if (index >= 0) {
+				var site = map.sites[index];
+				map.rivers = map.rivers.filter(function(r) {
+					return r.source != site.id && r.target != site.id;
+				});
+				var mi = map.mines.indexOf(site.id);
+				if (mi >= 0) map.mines.splice(mi, 1);
+				map.sites.splice(index, 1);
+				refreshIndices();
+			}
+			output();
+			draw();
+			e.preventDefault();
+		});
+
+		canvas.addEventListener('mousedown', function(e) {
+			if (e.button == 0) {
+				dragSource = findClosestSiteIndex(e.offsetX, e.offsetY);
+				e.preventDefault();
+			}
+		});
+
+		canvas.addEventListener('mousemove', function(e) {
+			active = findClosestSiteIndex(e.offsetX, e.offsetY);
+			if (dragSource >= 0) {
+				if (e.buttons & 1) {
+					dragTarget = active;
+				} else {
+					dragSource = -1;
+					dragTarget = -1;
+				}
+			}
+			draw();
+		});
+
+		canvas.addEventListener('mouseleave', function(e) {
+			active = -1;
+		});
+
+		canvas.addEventListener('mouseup', function(e) {
+			if (e.button == 0) {
+				var target = findClosestSiteIndex(e.offsetX, e.offsetY);
+				if (target >= 0 && dragSource != target) {
+					var river = {
+						'source': map.sites[dragSource].id,
+						'target': map.sites[target].id
+					};
+					var conflict = map.rivers.find(function(r) {
+						return river.source == r.source && river.target == r.target ||
+							river.source == r.target && river.target == r.source;
+					});
+					if (!conflict) {
+						map.rivers.push(river);
+						output();
+						silenceClick = e.timeStamp;
+					}
+				}
+				dragSource = -1;
+				dragTarget = -1;
+				draw();
+				e.preventDefault();
+			}
+		}, true);
+
+		textarea.addEventListener('change', function(e) {
+			try {
+				var json = JSON.parse(e.target.value);
+				if (Array.isArray(json['mines']) && Array.isArray(json['rivers']) && Array.isArray(json['sites'])) {
+					map = json;
+					refreshIndices();
+					draw();
+				}
+				e.target.classList.remove('warn');
+			} catch (error) {
+				console.warn(error);
+				e.target.classList.add('warn');
+			}
+		});
+
+		grid.addEventListener('click', function(e) {
+			var size = parseInt(prompt("Grid size?", "8"));
+			if (0 < size) {
+				var sites = [];
+				for (var i = 0; i < size; i++) {
+					for (var j = 0; j < size; j++) {
+						sites.push({
+							'id': i * size + j,
+							'x': i * 500 / (size - 1) + 150,
+							'y': j * 500 / (size - 1) + 50
+						});
+					}
+				}
+				map = { 'mines': [], 'rivers': [], 'sites': sites };
+				refreshIndices();
+				output();
+				draw();
+			}
+		});
+
+		draw();
+		output();
+	})()
+	</script>
+</body>
+
+</html>

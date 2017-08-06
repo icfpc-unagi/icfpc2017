@@ -5,3 +5,5 @@ pub mod randw;
 pub mod obst;
 
 pub mod lightning;
+
+pub mod shortest;
