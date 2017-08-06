@@ -24,7 +24,7 @@ if (isset($_GET['battle_id'])) {
   $battle_id = intval($_GET['battle_id']);
 }
 
-$battle = Database::SelectRow('SELECT * FROM battle NATURAL JOIN map NATURAL JOIN battle_log WHERE battle_id = {battle_id}', ['battle_id' => $battle_id]);
+$battle = Database::SelectRow('SELECT * FROM battle NATURAL JOIN map NATURAL JOIN battle_log WHERE battle_id = {battle_id} ORDER BY battle_log_id DESC LIMIT 1', ['battle_id' => $battle_id]);
 if (isset($battle['battle_id'])) {
   foreach (Database::Select('SELECT * FROM punter NATURAL JOIN ai WHERE battle_id = {battle_id} ORDER BY punter_id', ['battle_id' => $battle['battle_id']]) as $punter) {
     $battle['punters'][] = $punter;
