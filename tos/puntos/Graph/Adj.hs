@@ -3,6 +3,7 @@ module Graph.Adj
 
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Data.Tuple (swap)
 
 
 newtype Graph v = Graph { edges :: M.Map v (S.Set v) }

@@ -3,9 +3,15 @@
 module AI.Splurand
   (ai) where
 
+import Control.Monad.IO.Class
+import Control.Monad.Trans.State
+import Data.List
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import System.Random
 
 import qualified Graph.Adj as G
+import Lib.Random
 
 import qualified Protocol as P
 import Protocol.Ext (riversFromMove)
@@ -28,8 +34,8 @@ ai (P.QueryMove moves) = do
 
   if passCnt == 0
   then do
-    rndP <- liftIO $ randomRIO (0.0, 1.0)
-    if rndP < 0.3
+    flag <- liftIO $ withProb 0.3
+    if flag
     then do
       put (punter, vs, es, passCnt + 1)
       return $ P.AnswerMove $ P.MovePass punter
@@ -39,7 +45,7 @@ ai (P.QueryMove moves) = do
       let
         (s, t) = es !! rndIx
       -}
-      (s, t) <- randomChoice es
+      (s, t) <- liftIO $ randomChoice es
       return $ P.AnswerMove $ P.MoveClaim punter s t
   else do
     let
@@ -47,9 +53,9 @@ ai (P.QueryMove moves) = do
       degs = M.map length $ G.edges g
       goodVs = M.keys $ M.filter (>= 2) degs
 
-    r1 <- randomChoice goodVs
-    [r0, r2] <- randomSample $ S.toList $ (G.edges g) M.! r1
-    aaa
+    r1 <- liftIO $ randomChoice goodVs
+    [r0, r2] <- liftIO $ randomSample 2 $ S.toList $ (G.edges g) M.! r1
+    return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
 
 removeClaimed moves es = es \\ cs
   where
