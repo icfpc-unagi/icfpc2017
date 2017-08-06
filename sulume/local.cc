@@ -69,6 +69,7 @@ class Game {
   vector<vector<std::unordered_set<int>>> punter_river_adj_;
   vector<Json> last_moves_;
   vector<int> prior_passes_;
+  vector<int> rest_options_;
 
  public:
   Game(vector<string> ais) : ais_(ais) {}
@@ -117,9 +118,10 @@ class Game {
 
     punter_river_adj_.resize(ais_.size(),
                              vector<std::unordered_set<int>>(site_ids_.size()));
-    if (FLAGS_futures) futures_.resize(ais_.size());
     states_.resize(ais_.size());
-    prior_passes_.resize(ais_.size());
+    if (FLAGS_futures) futures_.resize(ais_.size());
+    if (FLAGS_splurges) prior_passes_.resize(ais_.size());
+    if (FLAGS_options) rest_options_.resize(ais_.size(), mines_.size());
     dead_ais_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
@@ -204,12 +206,12 @@ class Game {
   }
 
   static Json setup_json(int p, int total, Json map_json) {
-    return Json::object{
-        {"punter", p},
-        {"punters", total},
-        {"map", map_json},
-        {"settings", Json::object{{"futures", FLAGS_futures},
-                                  {"splurges", FLAGS_splurges}}}};
+    return Json::object{{"punter", p},
+                        {"punters", total},
+                        {"map", map_json},
+                        {"settings", Json::object{{"futures", FLAGS_futures},
+                                                  {"splurges", FLAGS_splurges},
+                                                  {"options", FLAGS_options}}}};
   }
 
   void setup(int p) {
@@ -318,6 +320,9 @@ class Game {
       if (ri < 0 || option["punter"].int_value() != p) {
         LOG(ERROR) << "invalid option [" << ais_[p] << "]: " << option.dump();
         error = "invalid option";
+      } else if (rest_options_[p] == 0) {
+        LOG(ERROR) << "no more options available: " << option.dump();
+        error = "no more options";
       } else if (rivers_[ri] == 0) {
         LOG(ERROR) << "river is not yet claimed: " << option.dump();
         error = "river not yet claimed";
@@ -335,12 +340,14 @@ class Game {
           punter_river_adj_[p][s_i].insert(t_i);
           punter_river_adj_[p][t_i].insert(s_i);
           last_moves_[p] = Json::object{{"option", option}};
+          rest_options_[p]--;
         }
       }
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
     } else {
       LOG(ERROR) << "Couldn't recognize move: " << got.dump();
+      error = "invalid move";
     }
     if (!error.empty()) {
       last_moves_[p] =
