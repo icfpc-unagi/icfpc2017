@@ -7,6 +7,7 @@
 #include <stack>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "base/base.h"
 #include "json11.hpp"
@@ -65,7 +66,7 @@ class Game {
 
   vector<Json> states_;
   vector<int> rivers_;  // 0: available, 1: claimed, 2: option held
-  vector<vector<vector<int>>> punter_river_adj_;
+  vector<vector<std::unordered_set<int>>> punter_river_adj_;
   vector<Json> last_moves_;
   vector<int> prior_passes_;
 
@@ -115,7 +116,7 @@ class Game {
     std::sort(mines_.begin(), mines_.end());
 
     punter_river_adj_.resize(ais_.size(),
-                             vector<vector<int>>(site_ids_.size()));
+                             vector<std::unordered_set<int>>(site_ids_.size()));
     if (FLAGS_futures) futures_.resize(ais_.size());
     states_.resize(ais_.size());
     prior_passes_.resize(ais_.size());
@@ -259,8 +260,8 @@ class Game {
         rivers_[ri] = 1;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
-        punter_river_adj_[p][s_i].push_back(t_i);
-        punter_river_adj_[p][t_i].push_back(s_i);
+        punter_river_adj_[p][s_i].insert(t_i);
+        punter_river_adj_[p][t_i].insert(s_i);
         last_moves_[p] = Json::object{{"claim", claim}};
       }
     } else if (FLAGS_splurges && !got["splurge"].is_null()) {
@@ -301,8 +302,8 @@ class Game {
             for (const auto& st : sts) {
               int s_i = site_id_to_index_[st.first];
               int t_i = site_id_to_index_[st.second];
-              punter_river_adj_[p][s_i].push_back(t_i);
-              punter_river_adj_[p][t_i].push_back(s_i);
+              punter_river_adj_[p][s_i].insert(t_i);
+              punter_river_adj_[p][t_i].insert(s_i);
             }
             prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
@@ -317,19 +318,24 @@ class Game {
       if (ri < 0 || option["punter"].int_value() != p) {
         LOG(ERROR) << "invalid option [" << ais_[p] << "]: " << option.dump();
         error = "invalid option";
-      } else if (rivers_[ri] != 1) {
-        LOG_IF(ERROR, rivers_[ri] == 0)
-            << "river is not yet claimed: " << option.dump();
-        LOG_IF(ERROR, rivers_[ri] == 2)
-            << "option is already held: " << option.dump();
-        error = "invalid option";
+      } else if (rivers_[ri] == 0) {
+        LOG(ERROR) << "river is not yet claimed: " << option.dump();
+        error = "river not yet claimed";
+      } else if (rivers_[ri] == 2) {
+        LOG(ERROR) << "option is already held: " << option.dump();
+        error = "option already held";
       } else {
         rivers_[ri] = 2;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
-        punter_river_adj_[p][s_i].push_back(t_i);
-        punter_river_adj_[p][t_i].push_back(s_i);
-        last_moves_[p] = Json::object{{"option", option}};
+        if (punter_river_adj_[p][s_i].count(t_i) > 0) {
+          LOG(ERROR) << "option is already claimed: " << option.dump();
+          error = "river already claimed";
+        } else {
+          punter_river_adj_[p][s_i].insert(t_i);
+          punter_river_adj_[p][t_i].insert(s_i);
+          last_moves_[p] = Json::object{{"option", option}};
+        }
       }
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
