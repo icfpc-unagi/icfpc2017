@@ -16,6 +16,7 @@ $ais = Database::Select('
           SELECT * FROM ai UNION ALL
           SELECT * FROM ai UNION ALL
           SELECT * FROM ai) AS ai
+    WHERE ai_weight > 0
     ORDER BY ai_weight LIMIT {limit}',
     ['limit' => intval($map['map_capacity'])]);
 shuffle($ais);
