@@ -253,7 +253,7 @@ class Game {
         illegal = true;
       } else {
         auto route = splurge["route"].array_items();
-        if (route.size() > prior_passes_[p]) {
+        if (route.size() > prior_passes_[p] + 2) {
           LOG(ERROR) << "not enough credit to splourge " << route.size();
           illegal = true;
         } else {
