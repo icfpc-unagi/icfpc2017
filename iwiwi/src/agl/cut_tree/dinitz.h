@@ -15,14 +15,18 @@ class dinitz {
   void add_undirected_edge(int f, int t, int c);
   void reset_graph();
 
+  void dfs2(int v, std::vector<bool> &vis);
+
 public:
   dinitz(const G& g);
   int max_flow(int s, int t);
+  std::vector<std::pair<int, int>> cut(int s);
 
   std::vector<E>& edges(V v) { return e_[v]; }
   V to(const E& e) const { return e.to_; }
   int cap(E& e) { return e.cap_; }
   E& rev(const E& e_in) { return e_[e_in.to_][e_in.rev_]; }
+
 
 private:
   G g;
