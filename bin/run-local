@@ -6,7 +6,7 @@ DEFINE_string svg '' 'svg'
 DEFINE_int scale 3 'scale'
 DEFINE_bool debug FALSE 'Debug'
 DEFINE_string listener '' 'listener command'
-DEFINE_say_you false '' 'handshake'
+DEFINE_bool say_you false '' 'handshake'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 cd "$(dirname "${BASH_SOURCE}")"
