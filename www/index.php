@@ -123,7 +123,7 @@ uasort($ais, function($lhs, $rhs) {
 echo "<div style=\"overflow-x:scroll\"><table class=\"table table-striped table-bordered\" style=\"table-layout:fixed\">\n";
 echo '<tr><th style="width: 15em">AI名</th>';
 foreach ($maps as $map) {
-  echo "<th style=\"width: 8em; word-wrap:break-word;\">{$map['map_key']}</th>";
+  echo "<th style=\"width: 8em; word-wrap:break-word;\">{$map['map_key']} ({$map['map_capacity']})</th>";
 }
 echo "</tr>\n";
 
