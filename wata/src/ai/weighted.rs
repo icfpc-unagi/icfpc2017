@@ -56,7 +56,8 @@ pub fn play(state: &mut State) -> usize {
 				for u in list.into_iter().rev() {
 					if dp[u].0 > 0.0 {
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (::std::f64::consts::E + dp[u].0).ln();
-						sum[u] += (dist[i][u] * dist[i][u]) as f64 * 0.9f64.powf(dp[u].0);
+						sum[u] += (dist[i][u] * dist[i][u]) as f64  / (1.0 + dp[u].0);
+						// sum[u] += (dist[i][u] * dist[i][u]) as f64 * 0.9f64.powf(dp[u].0);
 						let v = dp[u].1;
 						sum[v] += sum[u];
 						let e = state.graph[u][state.graph[u].binary_search_by(|&(w, _)| w.cmp(&v)).unwrap()].1;
