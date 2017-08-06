@@ -7,6 +7,7 @@ import qualified AI.Deg (ai)
 import qualified AI.Outdeg (ai)
 import qualified AI.WtOutdeg (ai)
 import qualified AI.Splurand
+import qualified AI.Splurand2
 
 import Offline (offline)
 
@@ -33,7 +34,8 @@ run (Args aiStr) = do
       ("deg", offline AI.Deg.ai),
       ("outdeg", offline AI.Outdeg.ai),
       ("wtoutdeg", offline AI.WtOutdeg.ai),
-      ("splurand", offline AI.Splurand.ai)
+      ("splurand", offline AI.Splurand.ai),
+      ("splurand2", offline AI.Splurand2.ai)
       ]
   maybe (error $ "not found AI name: " ++ aiStr) id ai
 
