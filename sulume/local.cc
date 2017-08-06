@@ -47,6 +47,7 @@ string part_filename(const string& file, int part) {
 
 class Game {
   vector<string> ais_;
+  vector<bool> dead_ais_;
   string listener_id;
   // Map = {"sites" : [Site], "rivers" : [River], "mines" : [SiteId]}
   // Site = {"id" : SiteId}
@@ -116,6 +117,7 @@ class Game {
     if (FLAGS_futures) futures_.resize(ais_.size());
     states_.resize(ais_.size());
     prior_passes_.resize(ais_.size());
+    dead_ais_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
           Json::object{{"pass", Json::object{{"punter", i}}}});
@@ -179,12 +181,13 @@ class Game {
       auto t2 = std::chrono::high_resolution_clock::now();
       auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
                     .count();
-      LOG_IF(WARNING, ms > 1000)
-          << " took " << ms << "ms; would exceed deadline!";
       if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
         LOG(WARNING) << "Deadline exceeded: " << cmd;
+        dead_ais_[p] = true;
         return Json();
       }
+      LOG_IF(WARNING, ms > 1000)
+          << " took " << ms << "ms; would exceed deadline!";
       string recv = GetResponseOrDie(response).data;
       size_t i = recv.find(':');
       CHECK_NE(i, string::npos) << "missing prefix: " << recv;
@@ -222,6 +225,7 @@ class Game {
   }
 
   void gameplay(int p) {
+    if (dead_ais_[p]) return;
     Json send = Json::object{{"move", Json::object{{"moves", last_moves_}}},
                              {"state", states_[p]}};
     Json got = io_once(ais_[p], send, FLAGS_timeout);
