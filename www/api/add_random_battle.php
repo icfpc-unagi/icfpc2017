@@ -7,7 +7,7 @@ $map = Database::SelectRow('
     FROM map ORDER BY map_weight LIMIT 1');
 
 $ais = Database::Select('
-    SELECT ai_id, ai_key, RAND() / ai_weight AS ai_weight
+    SELECT ai_id, ai_key, ai_is_important, RAND() / ai_weight AS ai_weight
     FROM (SELECT * FROM ai UNION ALL
           SELECT * FROM ai UNION ALL
           SELECT * FROM ai UNION ALL
@@ -15,6 +15,17 @@ $ais = Database::Select('
     ORDER BY ai_weight LIMIT {limit}',
     ['limit' => intval($map['map_capacity'])]);
 shuffle($ais);
+
+$punters = [];
+$ai_is_important = FALSE;
+foreach ($ais as $ai) {
+  $ai_is_important |= boolval($ai['ai_is_important']);
+  $punters[] = ['ai_id' => $ai['ai_id']];
+}
+
+if (!$ai_is_important) {
+  die(json_encode(['error' => 'No important AIs.']));;
+}
 
 Database::Command('
     INSERT INTO battle
@@ -25,10 +36,10 @@ if ($battle_id === FALSE) {
   die(json_encode(['error' => 'Failed to insert.']));
 }
 
-$punters = [];
-foreach ($ais as $ai) {
-  $punters[] = ['battle_id' => $battle_id, 'ai_id' => $ai['ai_id']];
+foreach (array_keys($punters) as $key) {
+  $punters[$key]['battle_id'] = $battle_id;
 }
+
 Database::Command('INSERT INTO punter {punters}', ['punters' => $punters]);
 
 die(json_encode(['map' => $map, 'punters' => $punters]));
