@@ -15,7 +15,7 @@ echo "<tr><td>処理待ちのバトル数</td><td>" .
             FROM punter WHERE punter_score IS NULL) AS punter
          WHERE battle_lock < NOW()') .
      " 件</td></tr>\n";
-echo "<tr><td style=\"width: 20em;\">処理のバトル数</td><td>" .
+echo "<tr><td style=\"width: 20em;\">処理中のバトル数</td><td>" .
      Database::SelectCell(
         'SELECT COUNT(*) FROM battle WHERE battle_lock > NOW()') .
      " 件</td></tr>\n";
