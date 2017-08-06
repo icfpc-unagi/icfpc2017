@@ -175,6 +175,7 @@ main {
 
 		canvas.addEventListener('mouseleave', function(e) {
 			active = -1;
+			draw();
 		});
 
 		canvas.addEventListener('mouseup', function(e) {
@@ -221,6 +222,7 @@ main {
 			var size = parseInt(prompt("Grid size?", "8"));
 			if (0 < size) {
 				var sites = [];
+				var rivers = [];
 				for (var i = 0; i < size; i++) {
 					for (var j = 0; j < size; j++) {
 						sites.push({
@@ -228,9 +230,21 @@ main {
 							'x': i * 500 / (size - 1) + 150,
 							'y': j * 500 / (size - 1) + 50
 						});
+						if (j + 1 < size) {
+							rivers.push({
+								'source': i * size + j,
+								'target': i * size + j + 1,
+							});
+						}
+						if (i + 1 < size) {
+							rivers.push({
+								'source': i * size + j,
+								'target': (i + 1) * size + j,
+							});
+						}
 					}
 				}
-				map = { 'mines': [], 'rivers': [], 'sites': sites };
+				map = { 'mines': [], 'rivers': rivers, 'sites': sites };
 				refreshIndices();
 				output();
 				draw();
