@@ -11,3 +11,5 @@ pub mod shortest;
 pub mod weighted;
 
 pub mod connected;
+
+pub mod connected2;
