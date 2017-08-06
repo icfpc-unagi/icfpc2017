@@ -184,7 +184,7 @@ class Game {
                     .count();
       if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
         LOG(WARNING) << "Deadline exceeded: " << cmd;
-        return Json();
+        return Json::object{{"error", "deadline exceeded"}};
       }
       LOG_IF(WARNING, ms > 1000)
           << " took " << ms << "ms; would exceed deadline!";
@@ -238,10 +238,10 @@ class Game {
     Json send = Json::object{{"move", Json::object{{"moves", last_moves_}}},
                              {"state", states_[p]}};
     Json got = io_once(ais_[p], send, FLAGS_timeout);
-    bool illegal = false;
-    if (got.is_null()) {
+    string error;
+    if (!got["error"].is_null()) {
       dead_ais_[p] = true;
-      illegal = true;
+      error = got["error"].string_value();
     } else if (!got["claim"].is_null()) {
       const auto& claim = got["claim"];
       int s = claim["source"].int_value();
@@ -249,11 +249,11 @@ class Game {
       int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
       if (ri < 0 || claim["punter"].int_value() != p) {
         LOG(ERROR) << "invalid claim [" << ais_[p] << "]: " << claim.dump();
-        illegal = true;
+        error = "invalid claim";
       } else if (river_claimed_[ri]) {
         LOG(ERROR) << "river claimed twice [" << ais_[p]
                    << "]: " << claim.dump();
-        illegal = true;
+        error = "river already claimed";
       } else {
         river_claimed_[ri] = true;
         int s_i = site_id_to_index_[s];
@@ -266,13 +266,13 @@ class Game {
       const auto& splurge = got["splurge"];
       if (splurge["punter"].int_value() != p) {
         LOG(ERROR) << "invalid splurge [" << ais_[p] << "]: " << splurge.dump();
-        illegal = true;
+        error = "invalid splurge";
       } else {
         auto route = splurge["route"].array_items();
         if (route.size() > prior_passes_[p] + 2) {
-          LOG(ERROR) << "not enough credit to splourge " << route.size() - 1
+          LOG(ERROR) << "not enough credits to splurge " << route.size() - 1
                      << " but had " << prior_passes_[p];
-          illegal = true;
+          error = "too few credits to splurge";
         } else {
           vector<int> rs;
           vector<pair<int, int>> sts;
@@ -284,18 +284,18 @@ class Game {
             if (ri < 0) {
               LOG(ERROR) << "invalid splurge [" << ais_[p]
                          << "]: " << got["splurge"].dump();
-              illegal = true;
+              error = "invalid splurge";
               break;
             } else if (river_claimed_[ri]) {
               LOG(ERROR) << "river claimed twice [" << ais_[p] << "]: " << s
                          << "-" << t;
-              illegal = true;
+              error = "river already claimed";
               break;
             }
             rs.push_back(ri);
             sts.emplace_back(s, t);
           }
-          if (!illegal) {
+          if (error.empty()) {
             for (int ri : rs) river_claimed_[ri] = true;
             for (const auto& st : sts) {
               int s_i = site_id_to_index_[st.first];
@@ -313,8 +313,9 @@ class Game {
     } else {
       LOG(ERROR) << "Couldn't recognize move: " << got.dump();
     }
-    if (illegal) {
-      last_moves_[p] = Json::object{{"pass", Json::object{{"punter", p}}}};
+    if (!error.empty()) {
+      last_moves_[p] =
+          Json::object{{"pass", Json::object{{"punter", p}}}, {"error", error}};
     }
     states_[p] = got["state"];
   }
