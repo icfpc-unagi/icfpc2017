@@ -1,8 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
 
-module AI.Outdeg
+module AI.WtOutdeg
   (ai) where
 
+import Control.Monad
 import Control.Monad.Trans.State
 import Control.Monad.IO.Class
 import Data.Aeson
@@ -10,9 +11,10 @@ import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Maybe
--- import qualified Graph.UnionFind as UF
+import Data.Semigroup
 import System.Random
 
+import Graph.UnionFind
 import qualified Protocol as P
 
 type MyState = (
@@ -22,36 +24,54 @@ type MyState = (
   [Int],
   [(Int, Int)])
 
+data MyScore = MyScore {
+  cntDegree :: Int,
+  cntMine :: Int}
+
+instance Semigroup MyScore where
+  MyScore n1 m1 <> MyScore n2 m2 = MyScore (n1+n2) (m1+m2)
+
 ai :: P.Punter (StateT MyState IO)
 ai (P.QueryInit punter punters map_) = do
   let
     vs = [i | P.Site i <- P.sites map_]
     es = concat [[(s, t), (t, s)] | P.River s t <- P.rivers map_]
-    myvs = P.mines map_
-    myes = []
-  put (punter, vs, es, myvs, myes)
+    mines = P.mines map_
+    myEs = []
+  put (punter, vs, es, mines, myEs)
   return $ P.AnswerReady punter
 
 ai (P.QueryMove moves) = do
-  (punter, vs, es0, myvs, myes) <- get
+  (punter, vs, esOld, mines, myEs) <- get
   let
-    es1 = removeClaimed moves es0
-    degs = degrees vs es1
+    es = removeClaimed moves esOld
+    degs = degrees vs es
+    setMines = S.fromList mines
+    isMine = flip S.member setMines
+  
+  esWithScore :: [((Int, Int), Int)] <- runUnionFindT $ do
+    forM_ vs $ \ v ->
+      ufFresh v $ MyScore {
+        cntDegree=degs v,
+        cntMine=(if isMine v then 1 else 0)}
+    forM_ myEs $ \ (s, t) -> ufUnify s t
+    forM es $ \ e@(s, t) -> do
+      (c1, MyScore n1 m1) <- ufGet s
+      (c2, MyScore n2 m2) <- ufGet t
+      return (e,
+        if c1 == c2
+        then -1
+        else (n1+n2)*(m1+m2) - n1*m1 - n2*m2
+        )
 
   let
-    setMyvs = S.fromList myvs
-    good (s, t) = and [
-      S.member s setMyvs,
-      not $ S.member t setMyvs]
-    goodEs = filter good es1
-    ans = reverse $ sortOn (degs . snd) goodEs
+    ans = map fst . reverse $ sortOn snd esWithScore
 
   case ans of
     [] -> return $ P.AnswerMove $ P.MovePass punter
     ((s,t):_) -> do
-      put (punter, vs, es1,
-        t : myvs,
-        (s,t) : (t,s) : myes)
+      put (punter, vs, es, mines,
+        (s,t) : myEs)
       return $ P.AnswerMove $ P.MoveClaim punter s t
 
 ai (P.QueryStop mvs scores) = do
