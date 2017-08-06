@@ -19,7 +19,9 @@ $data = '{"map": {"mines": [1, 5], "rivers": [{"source": 0, "target": 1}, {"sour
 {"claim": {"punter": 3, "source": 6, "target": 7}}';
 
 if (isset($_GET['battle_id'])) {
-  $data = Database::SelectCell('SELECT battle_log_data FROM battle_log WHERE battle_id = {battle_id}', ['battle_id' => $_GET['battle_id']]);
+  $lines = explode("\n", Database::SelectCell('SELECT battle_log_data FROM battle_log WHERE battle_id = {battle_id}', ['battle_id' => $_GET['battle_id']]));
+  $lines = array_map('trim', $lines);
+  $data = implode("\n", $lines);
 }
 
 $STYLESHEET = '
@@ -116,8 +118,7 @@ canvas.emscripten { border: 0px none; }
         <div class="col-sm-6 form-group" id="input_drop" ondragover="event.preventDefault();$(this).css('background-color', '#CCC');" ondragleave="$(this).css('background-color', 'white');" ondrop="inputFileDropped(event);$(this).css('background-color', 'white');" style="padding-bottom:20px;">
           <h2>入力</h2>
           <input id="input_file" type="file" onchange="inputFileChanged(this.files[0]);"><br>
-          <textarea class="form-control" id="input" rows="8"><?php echo $data; ?>
-          </textarea>
+          <textarea class="form-control" id="input" rows="8"><?php echo $data; ?></textarea>
           <br>
           <button class="btn btn-default" onclick="Module.setInput(document.getElementById('input').value)" style="width:100%">更新</button>
         </div>
@@ -310,5 +311,9 @@ canvas.emscripten { border: 0px none; }
       </script>
     </div> <!--container-->
     <script>
-    $(function(){ Module.setInput(document.getElementById('input').value); });
+    $(function(){
+      var data = <?php echo json_encode($data); ?>;
+      document.getElementById('input').value = data;
+      Module.setInput(data);
+    });
     </script>
