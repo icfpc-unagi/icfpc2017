@@ -8,6 +8,6 @@ pub mod lightning;
 
 pub mod shortest;
 
-pub mod farthest;
-
 pub mod weighted;
+
+pub mod connected;

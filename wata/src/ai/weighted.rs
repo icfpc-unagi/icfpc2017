@@ -8,7 +8,7 @@ struct AI {
 }
 
 pub fn setup(state: &mut State) {
-	eprintln!("lightning");
+	eprintln!("weighted");
 	state.ai = ::serde_json::to_string(&AI { turn: state.my }).unwrap();
 }
 

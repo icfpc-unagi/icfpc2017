@@ -12,6 +12,7 @@ import Data.Maybe
 import System.Random
 
 import Protocol
+import Protocol.Ext (riversFromMove)
 
 data MyState = MyState {
   myid :: PunterId,
@@ -46,7 +47,7 @@ ai (QueryInit punter punters map_) = do
 ai (QueryMove mvs) = do
       MyState p rOld <- get
       let
-        rClaimed = catMaybes $ map riverFromClaim mvs
+        rClaimed = concatMap riversFromMove mvs
         rNew = rOld \\ rClaimed
       put $ MyState p rNew
       if null rNew
@@ -60,6 +61,3 @@ ai (QueryMove mvs) = do
 ai (QueryStop mvs scores) = do
       -- liftIO $ print scores
       return AnswerNothing
-
-riverFromClaim (MoveClaim p s t) = Just $ River s t
-riverFromClaim _ = Nothing
