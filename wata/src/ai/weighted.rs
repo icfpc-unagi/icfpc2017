@@ -73,7 +73,8 @@ pub fn play(state: &mut State) -> usize {
 				for u in list.into_iter().rev() {
 					if dp[u].0 > 0.0 {
 						if dists[q][i][u] <= dist[i][u] {
-							sum[u] += (dist[i][u] * dist[i][u]) as f64;
+							// sum[u] += (dist[i][u] * dist[i][u]) as f64;
+							sum[u] += (dist[i][u] * dist[i][u]) as f64 * 0.9f64.powf(dp[u].0);
 						}
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (::std::f64::consts::E + dp[u].0).ln();
 						// sum[u] += (dist[i][u] * dist[i][u]) as f64  / (1.0 + dp[u].0);
