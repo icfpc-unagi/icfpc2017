@@ -271,9 +271,8 @@ function Color($id, $num) {
 }
 
 function ShowBattle($battle) {
-  echo "<h3>バトル {$battle['battle_id']}</h3>\n";
+  echo "<h3><a href=\"/vis/?battle_id={$battle['battle_id']}\">バトル {$battle['battle_id']}</a></h3>\n";
   echo "<table class=\"table table-striped table-bordered\" width=\"100%\">\n";
-  echo '<tr><td width="20%">バトルID</td><td>' . $battle['battle_id'] . "</td></tr>\n";
   echo '<tr><td>マップ</td><td>' . $battle['map_key'] . "</td></tr>\n";
   echo '<tr><td>作成時刻</td><td>' . $battle['battle_created'] . "</td></tr>\n";
   echo '<tr><td>更新時刻</td><td>' . $battle['battle_modified'] . "</td></tr>\n";
