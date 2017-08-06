@@ -119,6 +119,8 @@ fn setup(input: Input, ai: &str) -> Ready {
 		ai::obst::setup(&mut state);
 	} else if ai == "lightning" {
 		ai::lightning::setup(&mut state);
+	} else if ai == "shortest" {
+		ai::shortest::setup(&mut state);
 	} else {
 		panic!("unknown ai: {}", ai);
 	}
@@ -155,6 +157,8 @@ fn play(input: Input, ai: &str) -> Play {
 		ai::obst::play(&mut state)
 	} else if ai == "lightning" {
 		ai::lightning::play(&mut state)
+	} else if ai == "shortest" {
+		ai::shortest::play(&mut state)
 	} else {
 		panic!("unknown ai: {}", ai);
 	};
@@ -168,6 +172,7 @@ fn main() {
 	*STIME() = ::std::time::SystemTime::now();
 	use std::io::Read;
 	let mut input = String::new();
+	// TODO: n:
 	std::io::stdin().read_line(&mut input).unwrap();
 	let p = input.find(':').unwrap() + 1;
 	input = input[p..].to_owned();

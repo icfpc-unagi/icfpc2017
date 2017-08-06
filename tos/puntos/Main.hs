@@ -4,6 +4,7 @@ import Options.Applicative
 
 import qualified AI.Rand1 (randAI1)
 import qualified AI.Deg (ai)
+import qualified AI.Outdeg (ai)
 
 import Offline (offline)
 
@@ -27,7 +28,8 @@ run (Args aiStr) = do
   let
     ai = lookup aiStr $ [
       ("rand1", offline AI.Rand1.randAI1),
-      ("deg", offline AI.Deg.ai)
+      ("deg", offline AI.Deg.ai),
+      ("outdeg", offline AI.Outdeg.ai)
       ]
   maybe (error $ "not found AI name: " ++ aiStr) id ai
 

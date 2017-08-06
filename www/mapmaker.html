@@ -5,7 +5,7 @@
 	<title>MapMaker</title>
 </head>
 <style>
-#canvas {
+main {
 	display: inline-block;
 	vertical-align: top;
 }
@@ -15,6 +15,11 @@
 	height: 400px;
 }
 
+#stats {
+	font-size: 10pt;
+	font-family: monospace;
+}
+
 .warn {
 	box-shadow: red 0 0 10px;
 }
@@ -22,8 +27,10 @@
 
 <body>
 	<h1>MapMaker</h1>
-	<canvas width="800" height="600" border="1" id="canvas"></canvas>
-	<sidebar style="display:inline-block">
+	<main>
+		<canvas width="800" height="600" border="1" id="canvas"></canvas>
+	</main>
+	<aside style="display:inline-block">
 		<div>click: site
 			<br> meta+click: mine
 			<br> drag: river
@@ -31,12 +38,16 @@
 		<div>
 			<input type="button" value="Grid!" id="grid">
 		</div>
-		<textarea id="textarea"></textarea>
-	</sidebar>
+		<div>
+			<textarea id="textarea"></textarea>
+		</div>
+		<div id="stats"></div>
+	</aside>
 	<script>
 	(function() {
 		var textarea = document.getElementById('textarea');
 		var grid = document.getElementById('grid');
+		var stats = document.getElementById('stats');
 
 		var map = { 'mines': [], 'rivers': [], 'sites': [] };
 		var siteIndex = {};
@@ -87,6 +98,7 @@
 		function output() {
 			textarea.value = JSON.stringify(map);
 			textarea.classList.remove('warn');
+			stats.innerText = '# sites = ' + map.sites.length + '\n# mines = ' + map.mines.length + '\n# rivers = ' + map.rivers.length;
 		}
 
 		function findClosestSiteIndex(x, y) {
