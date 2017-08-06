@@ -97,7 +97,6 @@ pub fn play(state: &mut State) -> usize {
 						} else {
 							score[e] += w / (state.p - 1) as f64;
 						}
-						score[e] += w;
 						sum[v] += w;
 					}
 				}
