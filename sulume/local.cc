@@ -1,3 +1,4 @@
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -173,7 +174,13 @@ class Game {
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
     Json out;
     do {
+      auto t1 = std::chrono::high_resolution_clock::now();
       auto response = StreamUtil::Read(id, timeout);
+      auto t2 = std::chrono::high_resolution_clock::now();
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
+                    .count();
+      LOG_IF(WARNING, ms > 1000)
+          << " took " << ms << "ms; would exceed deadline!";
       if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
         LOG(WARNING) << "Deadline exceeded: " << cmd;
         return Json();
