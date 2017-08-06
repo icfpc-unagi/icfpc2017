@@ -99,6 +99,7 @@ foreach ($average_scores as $map_id => $scores) {
     return 0;
   });
   foreach ($scores as $ai_id => $score) {
+    if ($ais[$ai_id]['ai_weight'] <= 0) continue;
     $ais[$ai_id]['maps'][$map_id] =
         $score + ['rank' => @++$num_ranked_ais[$map_id]];
   }
@@ -128,6 +129,7 @@ echo "</tr>\n";
 
 foreach (array_keys($ais) as $rank => $ai_id) {
   $ai = $ais[$ai_id];
+  if ($ai['ai_weight'] <= 0) continue;
   echo "<tr><td>" . ($rank + 1) . " 位 (";
   echo sprintf("%+.2f", $ai['ai_score']) . ")<br>";
   echo "<b>{$ai['ai_key']}</b></td>";
