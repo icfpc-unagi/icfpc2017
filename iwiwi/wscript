@@ -62,7 +62,7 @@ def build(bld):
       name     = n,
       source   = cc,
       target   = n,
-      use      = ['gflags', 'jlog','json11', 'icfpc2017_iwiwi'],
+      use      = ['icfpc2017_iwiwi', 'gflags', 'jlog','json11'],
       lib      = ['boost_serialization'],
       includes = ['src', '3rd_party', 'src/agl'])
 
