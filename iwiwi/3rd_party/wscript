@@ -21,3 +21,8 @@ def build(bld):
     source       = 'json11/json11.cpp',
     target       = 'json11',
     includes     = '.')
+
+  bld.stlib(
+    source       = 'jlog.cc',
+    target       = 'jlog',
+    includes     = '.')
