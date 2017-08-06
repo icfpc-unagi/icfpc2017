@@ -40,11 +40,6 @@ ai (P.QueryMove moves) = do
       return $ P.AnswerMove $ P.MovePass punter
     else do
       put (punter, vs, es, passCnt)
-      {-
-      rndIx <- liftIO $ randomRIO (0, length es - 1)
-      let
-        (s, t) = es !! rndIx
-      -}
       (s, t) <- liftIO $ randomChoice es
       return $ P.AnswerMove $ P.MoveClaim punter s t
   else do
@@ -54,9 +49,14 @@ ai (P.QueryMove moves) = do
       degs = M.map length $ G.edges g
       goodVs = M.keys $ M.filter (>= 2) degs
 
-    r1 <- liftIO $ randomChoice goodVs
-    [r0, r2] <- liftIO $ randomSample 2 $ S.toList $ (G.edges g) M.! r1
-    return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
+    if null goodVs
+    then do
+      (s, t) <- liftIO $ randomChoice es
+      return $ P.AnswerMove $ P.MoveClaim punter s t
+    else do
+      r1 <- liftIO $ randomChoice goodVs
+      [r0, r2] <- liftIO $ randomSample 2 $ S.toList $ (G.edges g) M.! r1
+      return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
 
 removeClaimed moves es = es \\ cs
   where
