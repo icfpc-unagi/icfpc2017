@@ -286,6 +286,7 @@ class Game {
               punter_river_adj_[p][s_i].push_back(t_i);
               punter_river_adj_[p][t_i].push_back(s_i);
             }
+            prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
         }
