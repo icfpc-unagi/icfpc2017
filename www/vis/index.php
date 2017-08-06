@@ -18,8 +18,21 @@ $data = '{"map": {"mines": [1, 5], "rivers": [{"source": 0, "target": 1}, {"sour
 {"claim": {"punter": 2, "source": 5, "target": 7}}
 {"claim": {"punter": 3, "source": 6, "target": 7}}';
 
+$battle_id = 1;
+
 if (isset($_GET['battle_id'])) {
-  $lines = explode("\n", Database::SelectCell('SELECT battle_log_data FROM battle_log WHERE battle_id = {battle_id}', ['battle_id' => $_GET['battle_id']]));
+  $battle_id = intval($_GET['battle_id']);
+}
+
+$battle = Database::SelectRow('SELECT * FROM battle NATURAL JOIN map NATURAL JOIN battle_log WHERE battle_id = {battle_id}', ['battle_id' => $battle_id]);
+if (isset($battle['battle_id'])) {
+  foreach (Database::Select('SELECT * FROM punter NATURAL JOIN ai WHERE battle_id = {battle_id} ORDER BY punter_id', ['battle_id' => $battle['battle_id']]) as $punter) {
+    $battle['punters'][] = $punter;
+  }
+}
+
+if (isset($_GET['battle_id'])) {
+  $lines = explode("\n", $battle['battle_log_data']);
   $lines = array_map('trim', $lines);
   $data = implode("\n", $lines);
 }
@@ -101,6 +114,8 @@ canvas.emscripten { border: 0px none; }
 
 ?>
     <div class="container">
+      <?php ShowBattle($battle); ?>
+      <h3>ビジュアライザ</h3>
       <div class="spinner" id='spinner'></div>
       <div class="emscripten" id="status" style="display:none">Downloading...</div>
       <div class="emscripten">
@@ -314,6 +329,6 @@ canvas.emscripten { border: 0px none; }
     $(function(){
       var data = <?php echo json_encode($data); ?>;
       document.getElementById('input').value = data;
-      Module.setInput(data);
+      setTimeout(function() { Module.setInput(data); }, 3000);
     });
     </script>
