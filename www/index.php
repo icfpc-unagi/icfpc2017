@@ -4,13 +4,20 @@ require_once(dirname(__FILE__) . '/library/api.php');
 
 StartPage();
 
+$current_limit = min(10000, @intval($_GET['limit']) ?: 5000);
+
 echo '<h2>順位表</h2>';
+echo '<ul class="nav nav-tabs">';
+foreach ([5000, 3000, 1000, 10000] as $limit) {
+  echo '<li role="presentation"' . (($limit == $current_limit) ? ' class="active"' : '') . "><a href=\"?limit=$limit\">最新 $limit 件</a></li>\n";
+}
+echo "</ul><br>\n";
 echo '<div class="container">';
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_battle
     SELECT battle_id
-    FROM battle ORDER BY battle_created DESC LIMIT 5000');
+    FROM battle ORDER BY battle_created DESC LIMIT ' . $current_limit);
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_ai
