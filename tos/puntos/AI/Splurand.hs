@@ -40,6 +40,7 @@ ai (P.QueryMove moves) = do
       put (punter, vs, es, passCnt + 1)
       return $ P.AnswerMove $ P.MovePass punter
     else do
+      put (punter, vs, es, passCnt)
       {-
       rndIx <- liftIO $ randomRIO (0, length es - 1)
       let
@@ -48,6 +49,7 @@ ai (P.QueryMove moves) = do
       (s, t) <- liftIO $ randomChoice es
       return $ P.AnswerMove $ P.MoveClaim punter s t
   else do
+    put (punter, vs, es, 0)
     let
       g = G.buildUndir vs es
       degs = M.map length $ G.edges g
