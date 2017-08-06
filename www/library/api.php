@@ -281,10 +281,22 @@ function ShowBattle($battle) {
     echo 'Punter が存在しません';
   } else {
     echo '<table>';
+    $ranks = [];
+    foreach ($battle['punters'] as $punter) {
+      @$ranks[$punter['punter_score']]++;
+    }
+    krsort($ranks);
+    $rank = 1;
+    foreach (array_keys($ranks) as $score) {
+      $add = $ranks[$score];
+      $ranks[$score] = $rank;
+      $rank += $add;
+    }
+
     $color_index = 0;
     foreach ($battle['punters'] as $punter) {
       $color = Color($color_index, count($battle['punters']));
-      echo "<tr><td><span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $color_index . '. ' . $punter['ai_key'] . '</span></td><td>&nbsp;…&nbsp;</td><td style="text-align:right"><span style="font-family:monospace">' . $punter['punter_score'] . '</span> 点</td></tr>';
+      echo "<tr><td><span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $color_index . '. ' . $punter['ai_key'] . '</span></td><td>&nbsp;…&nbsp;</td><td style="text-align:right"><span style="font-family:monospace">' . $punter['punter_score'] . '</span> 点</td><td style="text-align:right; padding: 0 1ex">( ' . $ranks[$punter['punter_score']] . ' 位 )</td></tr>';
       $color_index++;
     }
     echo '</table>';
