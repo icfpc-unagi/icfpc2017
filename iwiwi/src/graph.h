@@ -39,7 +39,7 @@ struct UnionFind {  // Union find toha ittenai
     }
     vertices[w].clear();
   }
-}
+};
 
 /*
 struct UnionFind {
