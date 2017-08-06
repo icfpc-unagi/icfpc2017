@@ -18,17 +18,17 @@ fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, i: usize) -> (
 	let mut n2 = 0;
 	for s in 0..n {
 		if id[s] != !0 { continue }
-		n2 += 1;
-		id[s] = s;
+		id[s] = n2;
 		stack.push(s);
 		while let Some(u) = stack.pop() {
 			for &(v, e) in &graph[u] {
 				if user[e] == i && id[v] == !0 {
-					id[v] = s;
+					id[v] = n2;
 					stack.push(v);
 				}
 			}
 		}
+		n2 += 1;
 	}
 	let mut g = vec![vec![]; n2];
 	for u in 0..n {
