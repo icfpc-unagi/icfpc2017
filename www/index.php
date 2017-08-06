@@ -73,7 +73,7 @@ foreach ($records as $map_id => $map_records) {
   foreach ($map_records as $ai_id => $ai_records) {
     $scores = [];
     foreach ($ai_records as $record) {
-      $scores[] = ($record['punter_index'] - ($map_capacity - 1) / 2) * 0.5 +
+      $scores[] = ($record['punter_index'] - ($map_capacity - 1) / 2) * 0 +
                   ($record['punter_rank'] - ($map_capacity - 1) / 2) * -1;
     }
     $score_info =
@@ -100,13 +100,15 @@ foreach ($average_scores as $map_id => $scores) {
 foreach ($ais as $ai_id => $ai) {
   $ai_score = 0;
   foreach ($maps as $map) {
-    $ai_score += isset($ai['maps'][$map['map_id']]) ? $ai['maps'][$map['map_id']]['rank'] : count($ais);
+    $ai_score += isset($ai['maps'][$map['map_id']]) ?
+        $ai['maps'][$map['map_id']]['rank_average'] :
+        $maps[$map['map_id']]['map_capacity'] / -2;
   }
-  $ais[$ai_id]['ai_score'] = $ai_score;
+  $ais[$ai_id]['ai_score'] = $ai_score / count($maps);
 }
 uasort($ais, function($lhs, $rhs) {
-  if ($lhs['ai_score'] < $rhs['ai_score']) return -1;
-  if ($lhs['ai_score'] > $rhs['ai_score']) return 1;
+  if ($lhs['ai_score'] > $rhs['ai_score']) return -1;
+  if ($lhs['ai_score'] < $rhs['ai_score']) return 1;
   return 0;
 });
 
@@ -119,7 +121,9 @@ echo "</tr>\n";
 
 foreach (array_keys($ais) as $rank => $ai_id) {
   $ai = $ais[$ai_id];
-  echo "<tr><td>" . ($rank + 1) . " 位 … {$ai['ai_key']}</td>";
+  echo "<tr><td>" . ($rank + 1) . " 位 (";
+  echo sprintf("%+.2f", $ai['ai_score']) . ")<br>";
+  echo "<b>{$ai['ai_key']}</b></td>";
   foreach ($maps as $map) {
     if (!isset($ai['maps'][$map['map_id']])) {
       echo '<td>データなし</td>';
