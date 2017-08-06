@@ -16,6 +16,7 @@ import System.Random
 
 import Graph.UnionFind
 import qualified Protocol as P
+import Protocol.Ext (riversFromMove)
 
 type MyState = (
   P.PunterId,
@@ -80,7 +81,7 @@ ai (P.QueryStop mvs scores) = do
 
 removeClaimed moves es = es \\ cs
   where
-    cs = concat [[(s, t), (t, s)] | P.MoveClaim _ s t <- moves]
+    cs = concat [[(s, t), (t, s)] | P.River s t <- concatMap riversFromMove moves]
 
 degrees vs es = let
   zero = M.fromList [(v, 0) | v <- vs]

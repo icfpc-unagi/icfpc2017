@@ -73,6 +73,10 @@ data Move =
       target :: SiteId
       }
   | MovePass {punter :: PunterId}
+  | MoveSplurge {
+      punter :: PunterId,
+      route :: [SiteId]
+    }
   deriving Show
 
 instance FromJSON Move where
@@ -90,6 +94,13 @@ instance FromJSON Move where
         <$> w .: "punter"
       )
     )
+    <|>
+    (v .: "splurge" >>=
+      (withObject "MoveSplurge" $ \ w -> MoveSplurge
+        <$> w .: "punter"
+        <*> w .: "route"
+      )
+    )
 
 instance ToJSON Move where
   toJSON (MoveClaim p s t) = object ["claim" .= object [
@@ -98,6 +109,9 @@ instance ToJSON Move where
       "target" .= t]]
   toJSON (MovePass p) = object ["pass" .= object [
       "punter" .= p]]
+  toJSON (MoveSplurge p r) = object ["splurge" .= object [
+      "punter" .= p,
+      "route"  .= r]]
 
 
 data Score = Score {
