@@ -157,7 +157,7 @@ pair<pair<int, int>, MyAIState> Play(const MyState &state) {
       es.emplace_back(a, b);
     }
     agl::cut_tree_internal::dinitz dnz(agl::G(es, N));
-    cerr << "Cut: " << dnz.max_flow(S, T) << endl;
+    cerr << "Cut: " << dnz.max_flow(S, T) << ", Distance: " << shortest_path.size() << endl;
     vector<pair<int, int>> cut_es = dnz.cut(S);
     for (auto &e : cut_es) if (e.first > e.second) swap(e.first, e.second);
     set<pair<int, int>> se(all(cut_es));
