@@ -90,6 +90,7 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
 
       rep (v, N) {
         if (game.map.sites[v].is_mine) continue;
+        if (dst1[v].first == INT_MAX) continue;
         ord.emplace_back(dst1[v].first, ct.query(s, v), s, v);
       }
     }
