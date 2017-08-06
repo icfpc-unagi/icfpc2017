@@ -6,6 +6,7 @@ DEFINE_string svg '' 'svg'
 DEFINE_int scale 3 'scale'
 DEFINE_bool debug FALSE 'Debug'
 DEFINE_string listener '' 'listener command'
+DEFINE_say_you false '' 'handshake'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 cd "$(dirname "${BASH_SOURCE}")"
@@ -22,6 +23,7 @@ flags=(
     --scale="${FLAGS_scale}"
     --debug="${FLAGS_debug}"
     --listener="${FLAGS_listener}"
+    --say_you="${FLAGS_say_you}"
 )
 if [ "${FLAGS_svg}" != '' ]; then
   func::tmpfile dot_file
