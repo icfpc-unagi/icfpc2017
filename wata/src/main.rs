@@ -122,7 +122,7 @@ fn setup(input: Input, ai: &str) -> Ready {
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
 	let mut state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
-	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, farthest, weighted);
+	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected);
 	Ready { ready: my, state }
 }
 
@@ -148,7 +148,7 @@ fn play(input: Input, ai: &str) -> Play {
 			state.moves.push(last[(state.my + i) % state.p]);
 		}
 	}
-	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, farthest, weighted);
+	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.moves.push(Some(e));
 	eprintln!("{}: {} {}", state.my, claim.source, claim.target);
