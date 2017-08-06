@@ -54,7 +54,7 @@ def build(bld):
     name     = 'icfpc2017_iwiwi',
     source   = cc_file_stlib,
     target   = 'icfpc2017_iwiwi',
-    includes = ['src', '3rd_party'])
+    includes = ['src', '3rd_party', 'src/agl'])
 
   for cc in cc_file_main:
     n = os.path.basename(cc).replace('_main.cc', '')
@@ -62,16 +62,16 @@ def build(bld):
       name     = n,
       source   = cc,
       target   = n,
-      use      = ['gflags', 'jlog','json11', 'icfpc2017_iwiwi'],
+      use      = ['icfpc2017_iwiwi', 'gflags', 'jlog','json11'],
       lib      = ['boost_serialization'],
-      includes = ['src', '3rd_party'])
+      includes = ['src', '3rd_party', 'src/agl'])
 
-  bld.program(
-    name     = 'test',
-    source   = cc_file_test,
-    target   = 'test',
-    use      = ['gflags', 'gtest', 'jlog', 'json11', 'icfpc2017_iwiwi'],
-    includes = ['src', '3rd_party'])
+  #bld.program(
+  #  name     = 'test',
+  #  source   = cc_file_test,
+  #  target   = 'test',
+  #  use      = ['gflags', 'gtest', 'jlog', 'json11', 'icfpc2017_iwiwi'],
+  #  includes = ['src', '3rd_party', 'src/agl'])
 
 from waflib.Build import BuildContext
 class build_full(BuildContext):

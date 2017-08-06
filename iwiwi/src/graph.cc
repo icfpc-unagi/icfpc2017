@@ -30,7 +30,7 @@ Graph ConstructGraph(const GameState &s) {
 vector<pair<int, int>> SSSP(const Graph &g, int s) {
   vector<pair<int, int>> dst(g.size(), make_pair(INT_MAX, -1));
   queue<int> que;
-  dst[s] = make_pair(0, -1);
+  dst[s] = make_pair(0, -2);
   que.push(s);
 
   while (!que.empty()) {
@@ -53,7 +53,7 @@ vector<pair<int, int>> SSSP(const Graph &g, int s) {
 vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
   vector<pair<int, int>> dst(g.size(), make_pair(INT_MAX, -1));
   deque<pair<int, int>> que;
-  dst[s] = make_pair(0, -1);
+  dst[s] = make_pair(0, -2);
   que.push_back(make_pair(s, 0));
 
   while (!que.empty()) {
@@ -92,7 +92,7 @@ pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank) {
       int a = uf.root[v];
       int b = uf.root[e.to];
       if (a == b) continue;
-      es.emplace(a, b);
+      es.emplace(min(a, b), max(a, b));
     }
   }
 

@@ -29,4 +29,22 @@ echo "<tr><td>直近 60 分に処理したバトル数</td><td>" .
         'SELECT COUNT(*) FROM battle
         WHERE battle_modified > NOW() - INTERVAL 60 MINUTE') .
      " 件</td></tr>\n";
+echo "<tr><td style=\"width: 20em;\">20 分以上処理中のバトル数</td><td>" .
+     Database::SelectCell(
+        'SELECT COUNT(*) FROM battle
+         WHERE battle_lock > NOW() AND
+               battle_created < NOW() - INTERVAL 20 MINUTE') .
+     " 件</td></tr>\n";
+echo "<tr><td style=\"width: 20em;\">60 分以上処理中のバトル数</td><td>" .
+     Database::SelectCell(
+        'SELECT COUNT(*) FROM battle
+         WHERE battle_lock > NOW() AND
+               battle_created < NOW() - INTERVAL 60 MINUTE') .
+     " 件</td></tr>\n";
+echo "<tr><td style=\"width: 20em;\">3 時間以上処理中のバトル数</td><td>" .
+     Database::SelectCell(
+        'SELECT COUNT(*) FROM battle
+         WHERE battle_lock > NOW() AND
+               battle_created < NOW() - INTERVAL 180 MINUTE') .
+     " 件</td></tr>\n";
 echo "</table>\n";
