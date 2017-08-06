@@ -87,9 +87,9 @@ macro_rules! impl_cmp {
 }
 
 #[derive(Clone, Copy, Debug, Default, Hash)]
-pub struct Tot<T: PartialOrd>(T);
+pub struct Tot<T: PartialOrd>(pub T);
 impl_cmp!(Tot<T>; |a, b| a.0.partial_cmp(&b.0).unwrap(); where T: PartialOrd);
 
 #[derive(Clone, Copy, Debug, Default, Hash)]
-pub struct Rev<T: PartialOrd>(T);
+pub struct Rev<T: PartialOrd>(pub T);
 impl_cmp!(Rev<T>; |a, b| b.0.partial_cmp(&a.0).unwrap(); where T: PartialOrd);

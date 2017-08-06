@@ -97,28 +97,31 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
-	let mut connected = vec![false; n];
+	let mut connected = vec![!0; n];
 	let mut stack = vec![];
-	for &v in &state.mines {
-		connected[v] = true;
-		stack.push(v);
-	}
-	while let Some(u) = stack.pop() {
-		for &(v, e) in &state.graph[u] {
-			if user[e] == state.my && !connected[v] {
-				connected[v] = true;
-				stack.push(v);
+	for &s in &state.mines {
+		if connected[s] != !0 { continue }
+		connected[s] = s;
+		stack.push(s);
+		while let Some(u) = stack.pop() {
+			for &(v, e) in &state.graph[u] {
+				if user[e] == state.my && connected[v] == !0 {
+					connected[v] = s;
+					stack.push(v);
+				}
 			}
 		}
 	}
 	for &u in &state.mines {
 		for &(_, e) in &state.graph[u] {
-			score[e] *= 2.0;
+			if connected[state.es[e].0] != connected[state.es[e].1] {
+				score[e] *= 2.0;
+			}
 		}
 	}
 	for u in 0..n {
-		if connected[u] {
-			for &(_, e) in &state.graph[u] {
+		for &(_, e) in &state.graph[u] {
+			if connected[state.es[e].0] != connected[state.es[e].1] {
 				score[e] *= 2.0;
 			}
 		}
