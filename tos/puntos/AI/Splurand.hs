@@ -8,7 +8,6 @@ import Control.Monad.Trans.State
 import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import System.Random
 
 import qualified Graph.Adj as G
 import Lib.Random
