@@ -21,6 +21,7 @@ DEFINE_bool(dot_all, false, "output dot for all steps");
 DEFINE_double(scale, 5.0, "dot scale");
 DEFINE_bool(futures, true, "enable futures extension");
 DEFINE_string(listener, "", "step listener");
+DEFINE_bool(say_you, false, "use strict handshake");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -182,22 +183,34 @@ class Game {
  private:
   static Json io_once(const string& cmd, const Json& in, int timeout) {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
+    if (FLAGS_say_you) {
+      string err;
+      Json me = Json::parse(
+          GetResponseOrDie(StreamUtil::Read(id, timeout)).data, err)["me"];
+      CHECK(err.empty()) << "parse error: " << err;
+      CHECK(!me.is_null());
+      string you = Json(Json::object{{"you", me}}).dump();
+      GetResponseOrDie(StreamUtil::Write(id, StrCat(you.size(), ":", you)));
+    }
     string send = in.dump();
     GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
-    auto response = StreamUtil::Read(id, timeout);
-    if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
-      LOG(WARNING) << "Deadline exceeded: " << cmd;
-      return Json();
-    }
-    string recv = GetResponseOrDie(response).data;
+    Json out;
+    do {
+      auto response = StreamUtil::Read(id, timeout);
+      if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
+        LOG(WARNING) << "Deadline exceeded: " << cmd;
+        return Json();
+      }
+      string recv = GetResponseOrDie(response).data;
+      size_t i = recv.find(':');
+      CHECK_NE(i, string::npos) << "missing prefix: " << recv;
+      uint32 n;
+      CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
+      string err;
+      out = Json::parse(recv.substr(i + 1), err);
+      CHECK(err.empty()) << "parse error: " << err;
+    } while (!out["me"].is_null());
     GetResponseOrDie(StreamUtil::Kill(id));
-    size_t i = recv.find(':');
-    CHECK_NE(i, string::npos) << "missing prefix: " << recv;
-    uint32 n;
-    CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
-    string err;
-    Json out = Json::parse(recv.substr(i + 1), err);
-    CHECK(err.empty()) << "parse error: " << err;
     return out;
   }
 

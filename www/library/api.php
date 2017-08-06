@@ -4,6 +4,8 @@ require_once(dirname(__FILE__) . '/config.php');
 // define('DEBUG_MODE', 'sql');
 define('API_HOST', 'http://db.sx9.jp');
 
+$STYLESHEET = '';
+
 function Fail($message, $status = '400 Bad Request') {
   header('HTTP/1.1 ' . $status);
   echo trim($message) . "\n";
@@ -195,6 +197,7 @@ function RenderPage($buffer) {
   $output .= '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">';
   $output .= '<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">';
   $output .= '<style>table.layout { width: 100%; table-layout: fixed } table.layout > tbody > tr > td { padding: 20px; vertical-align: top; } .pending { color: #aaa } </style>';
+  $output .= "<style>{$GLOBALS['STYLESHEET']}</style>\n";
   $output .= '</head><body>';
   $output .= '<nav class="navbar navbar-default">
       <div class="container">
@@ -205,23 +208,23 @@ function RenderPage($buffer) {
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="./">🐍 Team Unagi</a>
+          <a class="navbar-brand" href="/">🐍 Team Unagi</a>
         </div>
         <div class="collapse navbar-collapse" id="navbar-collapse">
           <ul class="nav navbar-nav">
             
             <li class="False">
-              <a href="./">
+              <a href="/">
                 順位表
               </a>
             </li>
             <li class="False">
-              <a href="latest_battles.php">
+              <a href="/latest_battles.php">
                 最新バトル一覧
               </a>
             </li>
             <li class="False">
-              <a href="queue.php">
+              <a href="/queue.php">
                 処理キュー状況
               </a>
             </li>
@@ -237,4 +240,52 @@ function RenderPage($buffer) {
 
 function StartPage() {
   ob_start('RenderPage');
+}
+
+function Color($id, $num) {
+  $h = 6 * ($id + 1) / ($num + 1);
+  $s = 1;
+  $v = 170 / 255;
+  $c = $v * $s;
+  $x = $c * (1 - abs(fmod($h, 2) - 1));
+  $r = $v - $c;
+  $g = $v - $c;
+  $b = $v - $c;
+  if ($h < 1) {
+    $r += $c; $g += $x;
+  } else if ($h < 2) {
+    $g += $c; $r += $x;
+  } else if ($h < 3) {
+    $g += $c; $b += $x;
+  } else if ($h < 4) {
+    $b += $c; $g += $x;
+  } else if ($h < 5) {
+    $b += $c; $r += $x;
+  } else {
+    $r += $c; $b += $x;
+  }
+  $r = min(255, max(0, round($r * 255)));
+  $g = min(255, max(0, round($g * 255)));
+  $b = min(255, max(0, round($b * 255)));
+  return sprintf('#%02x%02x%02x', $r, $g, $b);
+}
+
+function ShowBattle($battle) {
+  echo "<h3><a href=\"/vis/?battle_id={$battle['battle_id']}\">バトル {$battle['battle_id']}</a></h3>\n";
+  echo "<table class=\"table table-striped table-bordered\" width=\"100%\">\n";
+  echo '<tr><td>マップ</td><td>' . $battle['map_key'] . "</td></tr>\n";
+  echo '<tr><td>作成時刻</td><td>' . $battle['battle_created'] . "</td></tr>\n";
+  echo '<tr><td>更新時刻</td><td>' . $battle['battle_modified'] . "</td></tr>\n";
+  echo '<tr><td>結果</td><td>';
+  if (!isset($battle['punters'])) {
+    echo 'Punter が存在しません';
+  } else {
+    $color_index = 0;
+    foreach ($battle['punters'] as $punter) {
+      $color = Color($color_index++, count($battle['punters']));
+      echo "<span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $punter['ai_key'] . '</span> … ' . $punter['punter_score'] . ' 点<br>';
+    }
+    echo '</td></tr>';
+  }
+  echo "</table>\n";
 }

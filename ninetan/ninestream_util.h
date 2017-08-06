@@ -72,7 +72,7 @@ class StreamUtil {
 };
 
 template<class T>
-T GetResponseOrDie(T response) {
+const T& GetResponseOrDie(const T& response) {
   CHECK_EQ(response.code, StreamUtil::OK) << "Error: " << response.error;
   return response;
 }
