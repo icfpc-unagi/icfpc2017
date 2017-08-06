@@ -11,6 +11,10 @@ $ais = Database::Select('
     FROM (SELECT * FROM ai UNION ALL
           SELECT * FROM ai UNION ALL
           SELECT * FROM ai UNION ALL
+          SELECT * FROM ai UNION ALL
+          SELECT * FROM ai UNION ALL
+          SELECT * FROM ai UNION ALL
+          SELECT * FROM ai UNION ALL
           SELECT * FROM ai) AS ai
     ORDER BY ai_weight LIMIT {limit}',
     ['limit' => intval($map['map_capacity'])]);
