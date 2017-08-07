@@ -125,6 +125,9 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
+	if score[e] < 0.0 {
+		debug!(score);
+	}
 	debug!(score[e]);
 	e
 }
