@@ -60,6 +60,7 @@ pub fn play(state: &mut State) -> usize {
 	for e in 0..m {
 		if user[e] != !0 { score[e] = -1.0 }
 	}
+	let ex = 0.4 + 0.5 * (state.es.len() - state.turn) as f64 / state.es.len() as f64;
 	for q in 0..state.p {
 		let (g, id) = get_graph(&state.graph, &user, &opt, q);
 		let n = g.len();
@@ -84,7 +85,7 @@ pub fn play(state: &mut State) -> usize {
 			}
 			let mut sum = vec![0.0; n];
 			for v in 0..id.len() {
-				sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * 0.7f64.powf(ds[id[v]] as f64);
+				sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64);
 			}
 			for &u in que[..qt].iter().rev() {
 				let mut count: usize = 0;
