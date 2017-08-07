@@ -303,7 +303,7 @@ class Game {
           if (rest_options_[p] < options) {
             LOG(ERROR) << ais_[p] << ": splurged " << options
                        << " options but had " << rest_options_[p]
-                       << "remaining:" << splurge.dump();
+                       << " remaining:" << splurge.dump();
             error = "options lacking";
           } else if (error.empty()) {
             for (int ri : rs) rivers_[ri] = 1;
@@ -316,6 +316,7 @@ class Game {
             prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
+	  rest_options_[p] -= options;
         }
       }
     } else if (FLAGS_options && !got["option"].is_null()) {
@@ -354,6 +355,8 @@ class Game {
       }
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
+      last_moves_[p] =
+          Json::object{{"pass", Json::object{{"punter", p}}}};
     } else {
       LOG(ERROR) << ais_[p] << ": couldn't recognize move: " << got.dump();
       error = "invalid move";
