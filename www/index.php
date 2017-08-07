@@ -5,19 +5,37 @@ require_once(dirname(__FILE__) . '/library/api.php');
 StartPage();
 
 $current_limit = min(10000, @intval($_GET['limit']) ?: 5000);
+$extension = @intval($_GET['extension']);
 
 echo '<h2>順位表</h2>';
-echo '<ul class="nav nav-tabs">';
+echo '<form action="?" method="GET">';
+echo '検索件数 <select class="form-control" name="is_queue">';
 foreach ([5000, 3000, 1000, 10000] as $limit) {
-  echo '<li role="presentation"' . (($limit == $current_limit) ? ' class="active"' : '') . "><a href=\"?limit=$limit\">最新 $limit 件</a></li>\n";
+  echo '<option value=""' . ($limit == $current_limit ? ' selected' : '') . ">最新 $limit 件</option>";
 }
-echo "</ul><br>\n";
+echo '</select>';
+echo '拡張ルール <select class="form-control" name="extension">';
+echo '<option value=""' . (!$extension ? ' selected' : '') . '>拡張ルールなし</option>';
+echo '<option value="1"' . ($extension ? ' selected' : '') . '>拡張ルールあり</option>';
+echo '</select>';
+
+echo '<br><input class="form-control" type="submit" value="検索"></form><br>';
+
 echo '<div class="container">';
 
-Database::Command('
+$map_where = 'TRUE';
+if ($extension) {
+  $map_where .= ' AND map_extensions = TRUE';
+} else {
+  $map_where .= ' AND map_extensions = FALSE';
+}
+
+Database::Command("
     CREATE TEMPORARY TABLE candidate_battle
     SELECT battle_id
-    FROM battle ORDER BY battle_created DESC LIMIT ' . $current_limit);
+    FROM battle NATURAL JOIN map
+    WHERE $map_where
+    ORDER BY battle_created DESC LIMIT $current_limit");
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_ai
@@ -25,7 +43,7 @@ Database::Command('
     FROM candidate_battle NATURAL JOIN punter');
 
 $maps = [];
-foreach (Database::Select('SELECT * FROM map') as $map) {
+foreach (Database::Select("SELECT * FROM map WHERE $map_where") as $map) {
   $maps[$map['map_id']] = $map;
 }
 
@@ -58,10 +76,13 @@ foreach ($battles as $battle) {
   $punters = [];
   foreach ($battle['punters'] as $punter_index => $punter) {
     $punter['punter_index'] = $punter_index;
-    $punters[sprintf('%08d', $punter['punter_score']) .
-             $punter_index] = $punter;
+    $punters[] = $punter;
   }
-  krsort($punters);
+  usort($punters, function($lhs, $rhs) {
+    if ($lhs['punter_score'] > $rhs['punter_score']) return -1;
+    if ($lhs['punter_score'] < $rhs['punter_score']) return 1;
+    return 0;
+  });
   foreach (array_values($punters) as $punter_rank => $punter) {
     $punter['punter_rank'] = $punter_rank;
     $records[$battle['map_id']][$punter['ai_id']][] = $punter;
@@ -152,8 +173,9 @@ foreach (array_keys($ais) as $rank => $ai_id) {
       default: $background = 'inherit'; break;
     }
     echo "<td style=\"text-align:center; background: $background\">";
+    echo "<a href=\"/latest_battles.php?map_id={$map['map_id']}&ai_id=$ai_id\" style=\"color:black\">";
     echo "{$rank['rank']} 位 / {$rank['rank_count']} 回<br>";
-    echo sprintf("%+.2f", $rank['rank_sum'] / $rank['rank_count']) . "</td>";
+    echo sprintf("%+.2f", $rank['rank_sum'] / $rank['rank_count']) . "</a></td>";
   }
   echo "</tr>\n";
 }
