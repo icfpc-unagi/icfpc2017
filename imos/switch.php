@@ -97,7 +97,7 @@ function RunCommand($command) {
   if (isset($command['map'])) {
     $settings = isset($command['map']['settings'])
         ? $command['map']['settings'] : [];
-    if (@$settings['option']) {
+    if (@$settings['options']) {
       $child = 1;
     } else {
       $child = 0;
