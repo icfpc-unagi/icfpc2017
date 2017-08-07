@@ -32,6 +32,12 @@ $master = [
     '--timeout=5000',
     '--logtostderr',
     "--map=/github/map/{$battle['map_key']}.json"];
+if ($battle['map_extensions']) {
+  $master[] = '--futures';
+  $master[] = '--options';
+  $master[] = '--splurges';
+}
+
 foreach ($battle['punter'] as $punter) {
   $master[] = $punter['ai_command'] . ' 2>/dev/null';
 }

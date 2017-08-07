@@ -33,7 +33,7 @@ instance Semigroup MyScore where
   MyScore n1 m1 <> MyScore n2 m2 = MyScore (n1+n2) (m1+m2)
 
 ai :: P.Punter (StateT MyState IO)
-ai (P.QueryInit punter punters map_) = do
+ai (P.QueryInit punter punters map_ settings) = do
   let
     vs = [i | P.Site i <- P.sites map_]
     es = concat [[(s, t), (t, s)] | P.River s t <- P.rivers map_]

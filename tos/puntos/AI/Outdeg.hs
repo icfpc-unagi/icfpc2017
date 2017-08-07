@@ -24,7 +24,7 @@ type MyState = (
   [(Int, Int)])
 
 ai :: P.Punter (StateT MyState IO)
-ai (P.QueryInit punter punters map_) = do
+ai (P.QueryInit punter punters map_ settings) = do
   let
     vs = [i | P.Site i <- P.sites map_]
     es = concat [[(s, t), (t, s)] | P.River s t <- P.rivers map_]
