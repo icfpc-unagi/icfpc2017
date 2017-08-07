@@ -148,6 +148,7 @@ canvas.emscripten { border: 0px none; }
 	        <li>p/; ・・・ 最初・終わり</li>
 	        <li>y/h ・・・ 線を細く・太く</li>
 	        <li>1/2 ・・・ 表示プレイヤー切り替え</li>
+	        <li>a ・・・ アニメーションオンオフ</li>
 	      </ul>
 
           <center>
