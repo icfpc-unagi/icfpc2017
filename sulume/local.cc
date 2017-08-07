@@ -187,11 +187,11 @@ class Game {
       auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1)
                     .count();
       if (response.code == StreamUtil::DEADLINE_EXCEEDED) {
-        LOG(WARNING) << "Deadline exceeded: " << cmd;
+        LOG(WARNING) << cmd << ": Deadline exceeded";
         return Json::object{{"error", "deadline exceeded"}};
       }
       LOG_IF(WARNING, ms > 1000)
-          << " took " << ms << "ms; would exceed deadline!";
+          << cmd << ": took " << ms << "ms; would exceed deadline!";
       string recv = GetResponseOrDie(response).data;
       size_t i = recv.find(':');
       CHECK_NE(i, string::npos) << "missing prefix: " << recv;
@@ -229,7 +229,7 @@ class Game {
         if (si < 0 || ti < 0 || ContainsKey(futures_[p], s) ||
             !binary_search(mines_.begin(), mines_.end(), si) ||
             binary_search(mines_.begin(), mines_.end(), ti)) {
-          LOG(ERROR) << "invalid future: " << future.dump();
+          LOG(ERROR) << ais_[p] << ": invalid future: " << future.dump();
         } else {
           futures_[p].emplace(s, t);
         }
@@ -252,11 +252,10 @@ class Game {
       int t = claim["target"].int_value();
       int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
       if (ri < 0 || claim["punter"].int_value() != p) {
-        LOG(ERROR) << "invalid claim [" << ais_[p] << "]: " << claim.dump();
+        LOG(ERROR) << ais_[p] << ": invalid claim: " << claim.dump();
         error = "invalid claim";
       } else if (rivers_[ri] > 0) {
-        LOG(ERROR) << "river claimed twice [" << ais_[p]
-                   << "]: " << claim.dump();
+        LOG(ERROR) << ais_[p] << ": river claimed twice: " << claim.dump();
         error = "river already claimed";
       } else {
         rivers_[ri] = 1;
@@ -269,13 +268,13 @@ class Game {
     } else if (FLAGS_splurges && !got["splurge"].is_null()) {
       const auto& splurge = got["splurge"];
       if (splurge["punter"].int_value() != p) {
-        LOG(ERROR) << "invalid splurge [" << ais_[p] << "]: " << splurge.dump();
+        LOG(ERROR) << ais_[p] << ": invalid splurge: " << splurge.dump();
         error = "invalid splurge";
       } else {
         auto route = splurge["route"].array_items();
         if (route.size() > prior_passes_[p] + 2) {
-          LOG(ERROR) << "not enough credits to splurge " << route.size() - 1
-                     << " but had " << prior_passes_[p];
+          LOG(ERROR) << ais_[p] << ": not enough credits to splurge "
+                     << route.size() - 1 << " but had " << prior_passes_[p];
           error = "too few credits to splurge";
         } else {
           vector<int> rs;
@@ -286,13 +285,13 @@ class Game {
             int ri =
                 FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
             if (ri < 0) {
-              LOG(ERROR) << "invalid splurge [" << ais_[p]
-                         << "]: " << got["splurge"].dump();
+              LOG(ERROR) << ais_[p]
+                         << ": invalid splurge: " << got["splurge"].dump();
               error = "invalid splurge";
               break;
             } else if (rivers_[ri] > 0) {
-              LOG(ERROR) << "river claimed twice [" << ais_[p] << "]: " << s
-                         << "-" << t;
+              LOG(ERROR) << ais_[p]
+                         << ": river claimed twice: " << splurge.dump();
               error = "river already claimed";
               break;
             }
@@ -318,23 +317,26 @@ class Game {
       int t = option["target"].int_value();
       int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
       if (ri < 0 || option["punter"].int_value() != p) {
-        LOG(ERROR) << "invalid option [" << ais_[p] << "]: " << option.dump();
+        LOG(ERROR) << ais_[p] << ": invalid option: " << option.dump();
         error = "invalid option";
       } else if (rest_options_[p] == 0) {
-        LOG(ERROR) << "no more options available: " << option.dump();
+        LOG(ERROR) << ais_[p]
+                   << ": no more options available: " << option.dump();
         error = "no more options";
       } else if (rivers_[ri] == 0) {
-        LOG(ERROR) << "river is not yet claimed: " << option.dump();
+        LOG(ERROR) << ais_[p]
+                   << ": river is not yet claimed: " << option.dump();
         error = "river not yet claimed";
       } else if (rivers_[ri] == 2) {
-        LOG(ERROR) << "option is already held: " << option.dump();
+        LOG(ERROR) << ais_[p] << ": option is already held: " << option.dump();
         error = "option already held";
       } else {
         rivers_[ri] = 2;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
         if (punter_river_adj_[p][s_i].count(t_i) > 0) {
-          LOG(ERROR) << "option is already claimed: " << option.dump();
+          LOG(ERROR) << ais_[p]
+                     << ": option is already claimed: " << option.dump();
           error = "river already claimed";
         } else {
           punter_river_adj_[p][s_i].insert(t_i);
@@ -346,7 +348,7 @@ class Game {
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
     } else {
-      LOG(ERROR) << "Couldn't recognize move: " << got.dump();
+      LOG(ERROR) << ais_[p] << ": couldn't recognize move: " << got.dump();
       error = "invalid move";
     }
     if (!error.empty()) {

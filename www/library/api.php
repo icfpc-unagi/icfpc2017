@@ -276,6 +276,9 @@ function ShowBattle($battle) {
   echo '<tr><td>マップ</td><td>' . $battle['map_key'] . "</td></tr>\n";
   echo '<tr><td>作成時刻</td><td>' . $battle['battle_created'] . "</td></tr>\n";
   echo '<tr><td>更新時刻</td><td>' . $battle['battle_modified'] . "</td></tr>\n";
+  if (isset($battle['battle_log_info']) && $battle['battle_log_info'] != '') {
+    echo '<tr><td>エラー</td><td><pre style="margin:0">' . htmlspecialchars($battle['battle_log_info']) . '</pre></td></tr>';
+  }
   echo '<tr><td>結果</td><td>';
   if (!isset($battle['punters'])) {
     echo 'Punter が存在しません';
@@ -296,7 +299,12 @@ function ShowBattle($battle) {
     $color_index = 0;
     foreach ($battle['punters'] as $punter) {
       $color = Color($color_index, count($battle['punters']));
-      echo "<tr><td><span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $color_index . '. ' . $punter['ai_key'] . '</span></td><td>&nbsp;…&nbsp;</td><td style="text-align:right"><span style="font-family:monospace">' . $punter['punter_score'] . '</span> 点</td><td style="text-align:right; padding: 0 1ex">( ' . $ranks[$punter['punter_score']] . ' 位 )</td></tr>';
+      if ($punter['punter_pass']) {
+        echo "<tr style=\"background:red;\">";
+      } else {
+        echo "<tr>";
+      }
+      echo "<td><span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $color_index . '. ' . $punter['ai_key'] . '</span></td><td>&nbsp;…&nbsp;</td><td style="text-align:right"><span style="font-family:monospace">' . $punter['punter_score'] . '</span> 点</td><td style="text-align:right; padding: 0 1ex">( ' . $ranks[$punter['punter_score']] . ' 位 )</td></tr>';
       $color_index++;
     }
     echo '</table>';

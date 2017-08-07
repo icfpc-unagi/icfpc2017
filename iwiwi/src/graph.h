@@ -3,7 +3,7 @@
 
 struct Edge {
   int to;
-  int owner;
+  int owner, owner2;
   double score;  // Used for some scoring (e.g., betweenness centrality)
 
   bool Available(int rank) const {
@@ -49,7 +49,7 @@ struct UnionFind {  // Union find toha ittenai
   }
 };
 
-pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank);
+pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank, bool allow_option = false);
 void SingleSourceWeightedBetweenness
 (Graph &g, int s, int distance_limit, const vector<double> &weight);
-pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g);
+pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g, bool allow_option = false);

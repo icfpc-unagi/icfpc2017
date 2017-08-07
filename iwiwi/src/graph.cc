@@ -4,22 +4,24 @@ Graph ConstructGraph(const GameState &s) {
   int n = s.map.sites.size();
   Graph g(n);
 
-  map<pair<int, int>, int> river_to_owner;
+  map<pair<int, int>, vector<int>> river_to_owner;
   for (auto &&claim: s.claims) {
     int a = claim.source, b = claim.target;
     if (a > b) swap(a, b);
-    river_to_owner[make_pair(a, b)] = claim.rank;
+    river_to_owner[make_pair(a, b)].push_back(claim.rank);
   }
 
   for (auto &&river: s.map.rivers) {
-    int a = river.first, b = river.second, o = -1;
+    int a = river.first, b = river.second;
+    vector<int> o;
     if (a > b) swap(a, b);
     if (river_to_owner.count(make_pair(a, b))) {
       o = river_to_owner[make_pair(a, b)];
     }
+    o.resize(2, -1);
 
-    g[a].emplace_back(Edge{b, o});
-    g[b].emplace_back(Edge{a, o});
+    g[a].emplace_back(Edge{b, o[0], o[1]});
+    g[b].emplace_back(Edge{a, o[0], o[1]});
   }
 
   return g;
@@ -65,7 +67,7 @@ vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
     for (auto &&e : g[v]) {
       int tv = e.to, td;
       if (e.owner == -1) td = d + 1;
-      else if (e.owner == rank) td = d;
+      else if (e.owner == rank || e.owner2 == rank) td = d;
       else continue;  // Owned by others
 
       if (td < dst[tv].first) {
@@ -79,16 +81,16 @@ vector<pair<int, int>> SSSPPlayer(const Graph &g, int s, int rank) {
   return dst;
 }
 
-pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank) {
+pair<Graph, UnionFind> ConstructContractedGraph(const Graph &g, int rank, bool allow_option) {
   int n = g.size();
   UnionFind uf(n);
   rep (v, n) for (const auto &e : g[v]) {
-    if (e.owner == rank) uf.Merge(v, e.to);
+    if (e.owner == rank || e.owner2 == rank) uf.Merge(v, e.to);
   }
 
   set<pair<int, int>> es;
   rep (v, n) for (const auto &e : g[v]) {
-    if (e.owner == -1) {
+    if (e.owner == -1 || (allow_option && e.owner2 == -1)) {
       int a = uf.root[v];
       int b = uf.root[e.to];
       if (a == b) continue;
@@ -162,10 +164,11 @@ void SingleSourceWeightedBetweenness
   }
 }
 
-pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g) {
+pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g, bool allow_option) {
   set<pair<int, int>> es;
   rep (v, original_g.size()) for (const auto &e : original_g[v]) {
     if (e.owner == -1) es.emplace(min(v, e.to), max(v, e.to));
+    if (allow_option) if (e.owner2 == -1) es.emplace(min(v, e.to), max(v, e.to));
   }
 
   for (int v : uf.vertices[a]) {
@@ -175,4 +178,5 @@ pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &
       }
     }
   }
+  return make_pair(-1, -1);
 }
