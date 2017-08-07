@@ -28,3 +28,12 @@ sh_binary(
         "//map",
     ],
 )
+
+cc_binary(
+    name = "ai_base",
+    srcs = ["ai_base.cc"],
+    deps = [
+        "//external:base",
+        ":json11",
+    ],
+)
