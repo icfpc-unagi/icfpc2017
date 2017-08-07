@@ -29,9 +29,10 @@ foreach ($battle['punter'] as $punter) {
 $master = [
     '/binary/local',
     '--timeout=5000',
+    '--logtostderr',
     "--map=/github/map/{$battle['map_key']}.json"];
 foreach ($battle['punter'] as $punter) {
-  $master[] = $punter['ai_command'];
+  $master[] = $punter['ai_command'] . ' 2>/dev/null';
 }
 
 $ninestream = [
