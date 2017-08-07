@@ -5,19 +5,37 @@ require_once(dirname(__FILE__) . '/library/api.php');
 StartPage();
 
 $current_limit = min(10000, @intval($_GET['limit']) ?: 5000);
+$extension = @intval($_GET['extension']);
 
 echo '<h2>順位表</h2>';
-echo '<ul class="nav nav-tabs">';
+echo '<form action="?" method="GET">';
+echo '検索件数 <select class="form-control" name="is_queue">';
 foreach ([5000, 3000, 1000, 10000] as $limit) {
-  echo '<li role="presentation"' . (($limit == $current_limit) ? ' class="active"' : '') . "><a href=\"?limit=$limit\">最新 $limit 件</a></li>\n";
+  echo '<option value=""' . ($limit == $current_limit ? ' selected' : '') . ">最新 $limit 件</option>";
 }
-echo "</ul><br>\n";
+echo '</select>';
+echo '拡張ルール <select class="form-control" name="extension">';
+echo '<option value=""' . (!$extension ? ' selected' : '') . '>拡張ルールなし</option>';
+echo '<option value="1"' . ($extension ? ' selected' : '') . '>拡張ルールあり</option>';
+echo '</select>';
+
+echo '<br><input class="form-control" type="submit" value="検索"></form><br>';
+
 echo '<div class="container">';
 
-Database::Command('
+$map_where = 'TRUE';
+if ($extension) {
+  $map_where .= ' AND map_extensions = TRUE';
+} else {
+  $map_where .= ' AND map_extensions = FALSE';
+}
+
+Database::Command("
     CREATE TEMPORARY TABLE candidate_battle
     SELECT battle_id
-    FROM battle ORDER BY battle_created DESC LIMIT ' . $current_limit);
+    FROM battle NATURAL JOIN map
+    WHERE $map_where
+    ORDER BY battle_created DESC LIMIT $current_limit");
 
 Database::Command('
     CREATE TEMPORARY TABLE candidate_ai
@@ -25,7 +43,7 @@ Database::Command('
     FROM candidate_battle NATURAL JOIN punter');
 
 $maps = [];
-foreach (Database::Select('SELECT * FROM map') as $map) {
+foreach (Database::Select("SELECT * FROM map WHERE $map_where") as $map) {
   $maps[$map['map_id']] = $map;
 }
 

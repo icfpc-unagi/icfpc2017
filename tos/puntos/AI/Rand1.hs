@@ -25,7 +25,7 @@ instance ToJSON MyState where
   toJSON (MyState p r) = object ["p" .= p, "r" .= r]
 
 randAI1 :: Punter (StateT MyState IO)
-randAI1 (QueryInit punter punters map_) = do
+randAI1 (QueryInit punter punters map_ setting) = do
       let
         p = punter
         r = rivers map_

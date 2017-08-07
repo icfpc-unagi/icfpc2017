@@ -34,7 +34,7 @@ degrees sites rivers = let
   in (m M.!)
 
 ai :: Punter (StateT MyState IO)
-ai (QueryInit punter punters map_) = do
+ai (QueryInit punter punters map_ settings) = do
       let
         p = punter
         r = rivers map_

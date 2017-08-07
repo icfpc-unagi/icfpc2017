@@ -12,7 +12,7 @@ import qualified Data.Set as S
 import Data.Tuple
 
 import qualified Graph.Adj as G
-import Lib.EPrint
+-- import Lib.EPrint
 import Lib.Random
 
 import qualified Protocol as P
@@ -23,7 +23,7 @@ type MyState = (P.PunterId, [Int], M.Map Edge Int, Int, Int)
 
 ai :: P.Punter (StateT MyState IO)
 
-ai (P.QueryInit punter punters map_) = do
+ai (P.QueryInit punter punters map_ settings) = do
   let
     vs = [i | P.Site i <- P.sites map_]
     es = [(s, t) | P.River s t <- P.rivers map_]
@@ -33,7 +33,7 @@ ai (P.QueryInit punter punters map_) = do
 
 ai (P.QueryMove moves) = do
   (punter, vs, esOld, passCnt, opCnt) <- get
-  liftIO $ eprint (passCnt, opCnt)
+  -- liftIO $ eprint (passCnt, opCnt)
   let
     es = removeClaimed punter moves esOld
   put (punter, vs, es, passCnt, opCnt)
