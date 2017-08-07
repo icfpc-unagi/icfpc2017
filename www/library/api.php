@@ -299,7 +299,12 @@ function ShowBattle($battle) {
     $color_index = 0;
     foreach ($battle['punters'] as $punter) {
       $color = Color($color_index, count($battle['punters']));
-      echo "<tr><td><span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $color_index . '. ' . $punter['ai_key'] . '</span></td><td>&nbsp;…&nbsp;</td><td style="text-align:right"><span style="font-family:monospace">' . $punter['punter_score'] . '</span> 点</td><td style="text-align:right; padding: 0 1ex">( ' . $ranks[$punter['punter_score']] . ' 位 )</td></tr>';
+      if ($punter['punter_pass']) {
+        echo "<tr style=\"background:red;\">";
+      } else {
+        echo "<tr>";
+      }
+      echo "<td><span style=\"background:$color; color:#fff; display: inline-block; padding: 0 1ex; margin: 0.3ex 0;\">" . $color_index . '. ' . $punter['ai_key'] . '</span></td><td>&nbsp;…&nbsp;</td><td style="text-align:right"><span style="font-family:monospace">' . $punter['punter_score'] . '</span> 点</td><td style="text-align:right; padding: 0 1ex">( ' . $ranks[$punter['punter_score']] . ' 位 )</td></tr>';
       $color_index++;
     }
     echo '</table>';
