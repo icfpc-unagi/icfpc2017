@@ -173,8 +173,9 @@ foreach (array_keys($ais) as $rank => $ai_id) {
       default: $background = 'inherit'; break;
     }
     echo "<td style=\"text-align:center; background: $background\">";
+    echo "<a href=\"/latest_battles.php?map_id={$map['map_id']}&ai_id=$ai_id\" style=\"color:black\">";
     echo "{$rank['rank']} 位 / {$rank['rank_count']} 回<br>";
-    echo sprintf("%+.2f", $rank['rank_sum'] / $rank['rank_count']) . "</td>";
+    echo sprintf("%+.2f", $rank['rank_sum'] / $rank['rank_count']) . "</a></td>";
   }
   echo "</tr>\n";
 }
