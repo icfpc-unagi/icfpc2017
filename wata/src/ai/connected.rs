@@ -113,7 +113,7 @@ pub fn play(state: &mut State) -> usize {
 	let mut e = !0;
 	for i in 0..m {
 		if connected[state.es[i].0] || connected[state.es[i].1] {
-			if score[e] >= 0.0 && (e == !0 || score[e] < score[i]) {
+			if score[i] >= 0.0 && (e == !0 || score[e] < score[i]) {
 				e = i;
 			}
 		}
