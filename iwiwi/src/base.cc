@@ -38,6 +38,13 @@ GameState ConstructGameState(const json11::Json &j) {  // First turn
   s.size = j["punters"].int_value();
   s.map = ConstructMap(j["map"]);
   s.turn = 0;
+
+  s.futures = s.options = false;
+  if (!j["settings"].is_null()) {
+    s.futures = j["settings"]["futures"].bool_value();
+    s.options = j["settings"]["options"].bool_value();
+  }
+
   return s;
 }
 

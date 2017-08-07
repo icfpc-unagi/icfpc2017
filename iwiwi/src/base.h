@@ -84,11 +84,13 @@ struct GameState {
   Map map;
   int turn;
 
+  bool futures, options;
+
   // Previous moves
   vector<Claim> claims;
 
   template<class Archive> void serialize(Archive& ar, unsigned int ver) {
-    ar & rank & size & map & turn & claims;
+    ar & rank & size & map & turn & claims & futures & options;
   }
 };
 
