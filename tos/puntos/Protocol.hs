@@ -76,7 +76,12 @@ data Move =
   | MoveSplurge {
       punter :: PunterId,
       route :: [SiteId]
-    }
+      }
+  | MoveOption {
+      punter :: PunterId,
+      source :: SiteId,
+      target :: SiteId
+      }
   deriving Show
 
 instance FromJSON Move where
@@ -101,6 +106,14 @@ instance FromJSON Move where
         <*> w .: "route"
       )
     )
+    <|>
+    (v .: "option" >>=
+      (withObject "MoveOption" $ \ w -> MoveOption
+        <$> w .: "punter"
+        <*> w .: "source"
+        <*> w .: "target"
+      )
+    )
 
 instance ToJSON Move where
   toJSON (MoveClaim p s t) = object ["claim" .= object [
@@ -112,6 +125,10 @@ instance ToJSON Move where
   toJSON (MoveSplurge p r) = object ["splurge" .= object [
       "punter" .= p,
       "route"  .= r]]
+  toJSON (MoveOption p s t) = object ["option" .= object [
+      "punter" .= p,
+      "source" .= s,
+      "target" .= t]]
 
 
 data Score = Score {

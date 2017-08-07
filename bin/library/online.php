@@ -82,7 +82,7 @@ function RunAi($command) {
         Fatal("AI must output a handshake formatted as 'bytes:json', " .
               "but: '$input'");
       }
-      $me = json_decode($result);
+      $me = json_decode($result[1], TRUE);
       if (!isset($me['me'])) {
         Fatal('Handshake must contain me field: ' . $result);
       }

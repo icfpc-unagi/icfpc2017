@@ -132,7 +132,12 @@ foreach (array_keys($ais) as $rank => $ai_id) {
   if ($ai['ai_weight'] <= 0) continue;
   echo "<tr><td>" . ($rank + 1) . " 位 (";
   echo sprintf("%+.2f", $ai['ai_score']) . ")<br>";
-  echo "<b>{$ai['ai_key']}</b></td>";
+  if ($ai['ai_is_important']) {
+    echo "<b>{$ai['ai_key']}</b>";
+  } else {
+    echo "{$ai['ai_key']}";
+  }
+  echo "</td>";
   foreach ($maps as $map) {
     if (!isset($ai['maps'][$map['map_id']])) {
       echo '<td>データなし</td>';
