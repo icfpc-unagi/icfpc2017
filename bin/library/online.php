@@ -13,8 +13,30 @@ function Error($message) {
   Message('0;31', $message);
 }
 
+function GetPort() {
+  $page = file_get_contents('http://punter.inf.ed.ac.uk/status.html');
+  foreach (explode("\n", $page) as $line) {
+    $line = str_replace('</td>', '', trim($line));
+    $cells = explode('<td>', $line);
+    if (count($cells) < 2) continue;
+    if (!preg_match('%Waiting for punters\. \((\d+)/(\d+)\)%',
+                    $cells[1], $match)) {
+      continue;
+    }
+    if (intval($match[1]) + 1 != intval($match[2])) continue;
+    if ($cells[4] == '1 seconds') continue;
+    $participants =
+        array_count_values(array_map('trim', explode(',', $cells[2])));
+    if (count($participants) != 1 || !isset($participants['eager punter'])) {
+      continue;
+    }
+    $ports[] = intval($cells[5]);
+  }
+  return $ports[array_rand($ports)];
+}
+
 $host = getenv('PUNTER_HOST') ?: 'punter.inf.ed.ac.uk';
-$port = getenv('PUNTER_PORT') ?: Fatal('PUNTER_PORT must be specified.');
+$port = getenv('PUNTER_PORT') ?: GetPort();
 Message('0;32', "Connecting to server $host:$port...");
 $fp = fsockopen($host, $port);
 if (!$fp) {
@@ -23,6 +45,7 @@ if (!$fp) {
 Message('0;32', "Connected.");
 $punter = getenv('PUNTER') ?: Fatal('PUNTER must be specified,');
 $handshake = boolval(getenv('PUNTER_HANDSHAKE'));
+$newline = boolval(getenv('PUNTER_NEWLINE'));
 
 function Command($command) {
   fwrite(STDOUT, rtrim($command, "\r\n") . "\n");
@@ -70,7 +93,7 @@ function WriteToServer($object) {
 }
 
 function RunAi($command) {
-  global $punter, $handshake;
+  global $punter, $handshake, $newline;
   if ($punter != '-') {
     $start_time = microtime(TRUE);
     $proc = proc_open($punter, [['pipe', 'r'], ['pipe', 'w']], $pipes);
@@ -86,11 +109,11 @@ function RunAi($command) {
         Fatal('Handshake must contain me field: ' . $result);
       }
       Message('0;32', "Handshake is done. AI name is '{$me['me']}'.");
-      $json = json_encode(['you' => $me['me']]) . "\n";
+      $json = json_encode(['you' => $me['me']]) . ($newline ? "\n" : '');
       Message('0;34', "Write to AI: " . strlen($json) . ":$json");
       fwrite($pipes[0], strlen($json) . ":$json");
     }
-    $json = json_encode($command) . "\n";
+    $json = json_encode($command) . ($newline ? "\n" : '');
     Message('0;34', "Write to AI: " . strlen($json) . ":$json");
     fwrite($pipes[0], strlen($json) . ":$json");
     fflush($pipes[0]);
@@ -181,7 +204,7 @@ function Main() {
       $num_rivers = count($rivers);
       $punter_counts = array_count_values($rivers);
       $num_empty_rivers = $punter_counts[-1] ?: 0;
-      $num_my_rivers = $punter_counts[$punter_id] ?: 0;
+      $num_my_rivers = @intval($punter_counts[$punter_id]);
       Message('0;33', 'Occupied rivers: ' . ($num_rivers - $num_empty_rivers) .
                       ' (' . $num_my_rivers . ') / ' . $num_rivers);
       if (isset($state)) {
