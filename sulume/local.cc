@@ -398,7 +398,8 @@ class Game {
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
       for (int i = 0; i < mines_.size(); ++i) {
-        int bet = FindWithDefault(futures_[p], mines_[i], -1);
+        int bet =
+            FLAGS_futures ? FindWithDefault(futures_[p], mines_[i], -1) : -1;
         vector<bool> visited(n);
         std::stack<int> st;
         st.push(mines_[i]);
