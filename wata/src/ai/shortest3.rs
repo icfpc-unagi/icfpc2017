@@ -148,7 +148,7 @@ pub fn play(state: &mut State) -> usize {
 		}
 		let mut score_opt = vec![0; state.es.len()];
 		for e in 0..state.es.len() {
-			if opt[e] != !0 { score_opt[e] = -1; }
+			if user[e] == !0 || opt[e] != !0 { score_opt[e] = -1; }
 		}
 		for i in 0..state.mines.len() {
 			let mut total = vec![0; n];
