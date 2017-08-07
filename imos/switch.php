@@ -102,6 +102,9 @@ function RunCommand($command) {
     } else {
       $child = 0;
     }
+    if (isset($command['state'])) {
+      unset($command['state']);
+    }
   } else {
     $child = $command['state']['child'];
     $command['state'] = $command['state']['state'];
