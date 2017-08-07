@@ -101,7 +101,11 @@ pub fn play(state: &mut State) -> usize {
 			}
 			let mut sum = vec![0.0; n];
 			for v in 0..id.len() {
-				sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64);
+				if ds[id[v]] <= dist[i][v] {
+					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64);
+				} else {
+					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64) * 0.5f64.powf((ds[id[v]] - dist[i][v]) as f64);
+				}
 			}
 			for &u in que[..qt].iter().rev() {
 				let mut count: usize = 0;
@@ -202,7 +206,7 @@ pub fn play(state: &mut State) -> usize {
 				e2 = i;
 			}
 		}
-		if opt_n[state.my] < state.mines.len() && score[e] < score_opt[e2] as f64 {
+		if opt_n[state.my] < state.mines.len() && score[e] < score_opt[e2] as f64 * 2.0 {
 			e = e2;
 		}
 		e
