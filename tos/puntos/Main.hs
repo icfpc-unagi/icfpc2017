@@ -8,6 +8,7 @@ import qualified AI.Outdeg (ai)
 import qualified AI.WtOutdeg (ai)
 import qualified AI.Splurand
 import qualified AI.Splurand2
+import qualified AI.OpSpRand
 
 import Offline (offline)
 
@@ -35,7 +36,8 @@ run (Args aiStr) = do
       ("outdeg", offline AI.Outdeg.ai),
       ("wtoutdeg", offline AI.WtOutdeg.ai),
       ("splurand", offline AI.Splurand.ai),
-      ("splurand2", offline AI.Splurand2.ai)
+      ("splurand2", offline AI.Splurand2.ai), -- pass ha tamerarenakatta.
+      ("opsprand", offline AI.OpSpRand.ai)
       ]
   maybe (error $ "not found AI name: " ++ aiStr) id ai
 
