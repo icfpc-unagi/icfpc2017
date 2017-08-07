@@ -279,6 +279,7 @@ class Game {
         } else {
           vector<int> rs;
           vector<pair<int, int>> sts;
+          int options = 0;
           for (int i = 0; i + 1 < route.size(); ++i) {
             int s = route[i].int_value();
             int t = route[i + 1].int_value();
@@ -289,16 +290,22 @@ class Game {
                          << ": invalid splurge: " << got["splurge"].dump();
               error = "invalid splurge";
               break;
-            } else if (rivers_[ri] > 0) {
-              LOG(ERROR) << ais_[p]
-                         << ": river claimed twice: " << splurge.dump();
-              error = "river already claimed";
+            } else if (rivers_[ri] > (FLAGS_options ? 1 : 0)) {
+              LOG(ERROR) << ais_[p] << ": unavailable river for splurge: "
+                         << splurge.dump();
+              error = "river unavailable for splurge";
               break;
             }
             rs.push_back(ri);
             sts.emplace_back(s, t);
+            if (rivers_[ri] == 1) options++;
           }
-          if (error.empty()) {
+          if (rest_options_[p] < options) {
+            LOG(ERROR) << ais_[p] << ": splurged " << options
+                       << " options but had " << rest_options_[p]
+                       << "remaining:" << splurge.dump();
+            error = "options lacking";
+          } else if (error.empty()) {
             for (int ri : rs) rivers_[ri] = 1;
             for (const auto& st : sts) {
               int s_i = site_id_to_index_[st.first];
