@@ -17,9 +17,12 @@ pub fn play(state: &mut State) -> usize {
 	let ai: AI = ::serde_json::from_str(&state.ai).unwrap();
 	let n = state.graph.len();
 	let mut user = vec![!0; state.es.len()];
-	for (i, &mov) in state.moves.iter().enumerate() {
-		if let Some(e) = mov {
-			user[e] = i % state.p;
+	let mut opt = vec![!0; state.es.len()];
+	for &(q, e) in &state.moves {
+		if user[e] == !0 {
+			user[e] = q;
+		} else if opt[e] == !0 {
+			opt[e] = q;
 		}
 	}
 	let mut uf = UnionFind::new(n);

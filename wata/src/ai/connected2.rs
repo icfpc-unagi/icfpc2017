@@ -22,9 +22,12 @@ pub fn play(state: &mut State) -> usize {
 	let n = state.graph.len();
 	let m = state.es.len();
 	let mut user = vec![!0; state.es.len()];
-	for (i, &mov) in state.moves.iter().enumerate() {
-		if let Some(e) = mov {
-			user[e] = i % state.p;
+	let mut opt = vec![!0; state.es.len()];
+	for &(q, e) in &state.moves {
+		if user[e] == !0 {
+			user[e] = q;
+		} else if opt[e] == !0 {
+			opt[e] = q;
 		}
 	}
 	let mut dists = vec![vec![vec![]; state.mines.len()]; state.p];
