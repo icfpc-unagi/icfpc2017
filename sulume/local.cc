@@ -7,6 +7,7 @@
 #include <stack>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include "base/base.h"
 #include "json11.hpp"
@@ -24,6 +25,7 @@ DEFINE_bool(futures, true, "enable futures extension");
 DEFINE_string(listener, "", "step listener");
 DEFINE_bool(say_you, false, "use strict handshake");
 DEFINE_bool(splurges, true, "enable splurges extension");
+DEFINE_bool(options, true, "enable options extension");
 
 using json11::Json;
 using ninetan::StreamUtil;
@@ -63,10 +65,11 @@ class Game {
   vector<map<int, int>> futures_;  // as id
 
   vector<Json> states_;
-  vector<bool> river_claimed_;
-  vector<vector<vector<int>>> punter_river_adj_;
+  vector<int> rivers_;  // 0: available, 1: claimed, 2: option held
+  vector<vector<std::unordered_set<int>>> punter_river_adj_;
   vector<Json> last_moves_;
   vector<int> prior_passes_;
+  vector<int> rest_options_;
 
  public:
   Game(vector<string> ais) : ais_(ais) {}
@@ -105,7 +108,7 @@ class Game {
       CHECK(ContainsKey(site_id_to_index_, t)) << "invalid river";
       river_to_index_.emplace(make_sorted_pair(s, t), i);
     }
-    river_claimed_.resize(rivers.size());
+    rivers_.resize(rivers.size());
     for (const auto& mine : map_json_["mines"].array_items()) {
       int m = mine.int_value();
       CHECK(ContainsKey(site_id_to_index_, m)) << "invalid mine";
@@ -114,10 +117,11 @@ class Game {
     std::sort(mines_.begin(), mines_.end());
 
     punter_river_adj_.resize(ais_.size(),
-                             vector<vector<int>>(site_ids_.size()));
-    if (FLAGS_futures) futures_.resize(ais_.size());
+                             vector<std::unordered_set<int>>(site_ids_.size()));
     states_.resize(ais_.size());
-    prior_passes_.resize(ais_.size());
+    if (FLAGS_futures) futures_.resize(ais_.size());
+    if (FLAGS_splurges) prior_passes_.resize(ais_.size());
+    if (FLAGS_options) rest_options_.resize(ais_.size(), mines_.size());
     dead_ais_.resize(ais_.size());
     for (int i = 0; i < ais_.size(); ++i) {
       last_moves_.emplace_back(
@@ -142,7 +146,7 @@ class Game {
       GetResponseOrDie(StreamUtil::Write(
           listener_id, setup_json(-1, ais_.size(), map_json_).dump()));
     }
-    for (int turn = 0; turn < river_claimed_.size(); ++turn) {
+    for (int turn = 0; turn < rivers_.size(); ++turn) {
       int i = turn % ais_.size();
       gameplay(i);
 
@@ -202,12 +206,12 @@ class Game {
   }
 
   static Json setup_json(int p, int total, Json map_json) {
-    return Json::object{
-        {"punter", p},
-        {"punters", total},
-        {"map", map_json},
-        {"settings", Json::object{{"futures", FLAGS_futures},
-                                  {"splurges", FLAGS_splurges}}}};
+    return Json::object{{"punter", p},
+                        {"punters", total},
+                        {"map", map_json},
+                        {"settings", Json::object{{"futures", FLAGS_futures},
+                                                  {"splurges", FLAGS_splurges},
+                                                  {"options", FLAGS_options}}}};
   }
 
   void setup(int p) {
@@ -250,16 +254,16 @@ class Game {
       if (ri < 0 || claim["punter"].int_value() != p) {
         LOG(ERROR) << "invalid claim [" << ais_[p] << "]: " << claim.dump();
         error = "invalid claim";
-      } else if (river_claimed_[ri]) {
+      } else if (rivers_[ri] > 0) {
         LOG(ERROR) << "river claimed twice [" << ais_[p]
                    << "]: " << claim.dump();
         error = "river already claimed";
       } else {
-        river_claimed_[ri] = true;
+        rivers_[ri] = 1;
         int s_i = site_id_to_index_[s];
         int t_i = site_id_to_index_[t];
-        punter_river_adj_[p][s_i].push_back(t_i);
-        punter_river_adj_[p][t_i].push_back(s_i);
+        punter_river_adj_[p][s_i].insert(t_i);
+        punter_river_adj_[p][t_i].insert(s_i);
         last_moves_[p] = Json::object{{"claim", claim}};
       }
     } else if (FLAGS_splurges && !got["splurge"].is_null()) {
@@ -286,7 +290,7 @@ class Game {
                          << "]: " << got["splurge"].dump();
               error = "invalid splurge";
               break;
-            } else if (river_claimed_[ri]) {
+            } else if (rivers_[ri] > 0) {
               LOG(ERROR) << "river claimed twice [" << ais_[p] << "]: " << s
                          << "-" << t;
               error = "river already claimed";
@@ -296,26 +300,59 @@ class Game {
             sts.emplace_back(s, t);
           }
           if (error.empty()) {
-            for (int ri : rs) river_claimed_[ri] = true;
+            for (int ri : rs) rivers_[ri] = 1;
             for (const auto& st : sts) {
               int s_i = site_id_to_index_[st.first];
               int t_i = site_id_to_index_[st.second];
-              punter_river_adj_[p][s_i].push_back(t_i);
-              punter_river_adj_[p][t_i].push_back(s_i);
+              punter_river_adj_[p][s_i].insert(t_i);
+              punter_river_adj_[p][t_i].insert(s_i);
             }
             prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
         }
       }
+    } else if (FLAGS_options && !got["option"].is_null()) {
+      const auto& option = got["option"];
+      int s = option["source"].int_value();
+      int t = option["target"].int_value();
+      int ri = FindWithDefault(river_to_index_, make_sorted_pair(s, t), -1);
+      if (ri < 0 || option["punter"].int_value() != p) {
+        LOG(ERROR) << "invalid option [" << ais_[p] << "]: " << option.dump();
+        error = "invalid option";
+      } else if (rest_options_[p] == 0) {
+        LOG(ERROR) << "no more options available: " << option.dump();
+        error = "no more options";
+      } else if (rivers_[ri] == 0) {
+        LOG(ERROR) << "river is not yet claimed: " << option.dump();
+        error = "river not yet claimed";
+      } else if (rivers_[ri] == 2) {
+        LOG(ERROR) << "option is already held: " << option.dump();
+        error = "option already held";
+      } else {
+        rivers_[ri] = 2;
+        int s_i = site_id_to_index_[s];
+        int t_i = site_id_to_index_[t];
+        if (punter_river_adj_[p][s_i].count(t_i) > 0) {
+          LOG(ERROR) << "option is already claimed: " << option.dump();
+          error = "river already claimed";
+        } else {
+          punter_river_adj_[p][s_i].insert(t_i);
+          punter_river_adj_[p][t_i].insert(s_i);
+          last_moves_[p] = Json::object{{"option", option}};
+          rest_options_[p]--;
+        }
+      }
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
     } else {
       LOG(ERROR) << "Couldn't recognize move: " << got.dump();
+      error = "invalid move";
     }
     if (!error.empty()) {
       last_moves_[p] =
           Json::object{{"pass", Json::object{{"punter", p}}}, {"error", error}};
+      prior_passes_[p]++;
     }
     states_[p] = got["state"];
   }
