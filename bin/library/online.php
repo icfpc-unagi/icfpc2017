@@ -13,8 +13,30 @@ function Error($message) {
   Message('0;31', $message);
 }
 
+function GetPort() {
+  $page = file_get_contents('http://punter.inf.ed.ac.uk/status.html');
+  foreach (explode("\n", $page) as $line) {
+    $line = str_replace('</td>', '', trim($line));
+    $cells = explode('<td>', $line);
+    if (count($cells) < 2) continue;
+    if (!preg_match('%Waiting for punters\. \((\d+)/(\d+)\)%',
+                    $cells[1], $match)) {
+      continue;
+    }
+    if (intval($match[1]) + 1 != intval($match[2])) continue;
+    if ($cells[4] == '1 seconds') continue;
+    $participants =
+        array_count_values(array_map('trim', explode(',', $cells[2])));
+    if (count($participants) != 1 || !isset($participants['eager punter'])) {
+      continue;
+    }
+    $ports[] = intval($cells[5]);
+  }
+  return $ports[array_rand($ports)];
+}
+
 $host = getenv('PUNTER_HOST') ?: 'punter.inf.ed.ac.uk';
-$port = getenv('PUNTER_PORT') ?: Fatal('PUNTER_PORT must be specified.');
+$port = getenv('PUNTER_PORT') ?: GetPort();
 Message('0;32', "Connecting to server $host:$port...");
 $fp = fsockopen($host, $port);
 if (!$fp) {
