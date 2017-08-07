@@ -125,7 +125,6 @@ StreamUtil::ListResponse StreamUtil::List(const string& stream_id) {
   SendRequest("list " + stream_id);
   return ReceiveResponse<ListResponse>(
       [](const string& data, ListResponse* response) {
-        LOG(INFO) << "LIST";
         if (data.empty()) { return; }
         response->stream_ids = strings::Split(data, " ");
       });
