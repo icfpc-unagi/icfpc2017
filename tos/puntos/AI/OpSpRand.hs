@@ -12,7 +12,7 @@ import qualified Data.Set as S
 import Data.Tuple
 
 import qualified Graph.Adj as G
-import Lib.EPrint
+-- import Lib.EPrint
 import Lib.Random
 
 import qualified Protocol as P
@@ -33,7 +33,7 @@ ai (P.QueryInit punter punters map_ settings) = do
 
 ai (P.QueryMove moves) = do
   (punter, vs, esOld, passCnt, opCnt) <- get
-  liftIO $ eprint (passCnt, opCnt)
+  -- liftIO $ eprint (passCnt, opCnt)
   let
     es = removeClaimed punter moves esOld
   put (punter, vs, es, passCnt, opCnt)

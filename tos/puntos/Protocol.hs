@@ -6,14 +6,9 @@ module Protocol
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.State
-import Control.Monad.IO.Class
 import Data.Aeson
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
-import Data.List
-import Data.Maybe
-import System.Random
 
 type Punter m = Query -> m Answer
 
