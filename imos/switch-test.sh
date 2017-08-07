@@ -43,3 +43,43 @@ exit 0
 EOM
 
 diff "${TMPDIR}/expected" "${TMPDIR}/actual"
+
+################################################################################
+# Setup testing.
+################################################################################
+
+cat <<'EOM' > "${TMPDIR}/expected"
+OK 1
+DEADLINE_EXCEEDED No ready stream.
+OK 2
+OK 3
+OK 2
+OK 3
+OK 2 21:{"you":"Unagi 8101"}
+OK 3 21:{"you":"Unagi 8102"}
+OK 1 23:{"me":"Unagi Wrapper"}
+OK 1
+OK 1
+DEADLINE_EXCEEDED No ready stream.
+OK
+OK
+EOM
+
+ninetan/ninestream <<"EOM" >"${TMPDIR}/actual"
+run 1 php imos/switch.php "nc -l 8101" "nc -l 8102"
+read 1 300
+run 1 nc localhost 8101
+run 1 nc localhost 8102
+write 2 20:{"me":"Unagi 8101"}
+write 3 20:{"me":"Unagi 8102"}
+read 2 1000
+read 3 1000
+read 1 1000
+write 1 24:{"you":"Unagi Wrapper"}
+write 1 -:{"stop":{"moves":[]}}
+read -1 100
+list
+exit 0
+EOM
+
+diff "${TMPDIR}/expected" "${TMPDIR}/actual"
