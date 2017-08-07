@@ -169,9 +169,13 @@ class Game {
   static Json io_once(const string& cmd, const Json& in, int timeout) {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
     if (FLAGS_say_you) {
+      string recv = GetResponseOrDie(StreamUtil::Read(id, timeout)).data;
+      size_t i = recv.find(':');
+      CHECK_NE(i, string::npos) << "missing prefix: " << recv;
+      uint32 n;
+      CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
       string err;
-      Json me = Json::parse(
-          GetResponseOrDie(StreamUtil::Read(id, timeout)).data, err)["me"];
+      Json me = Json::parse(recv.substr(i + 1), err)["me"];
       CHECK(err.empty()) << "parse error: " << err;
       CHECK(!me.is_null());
       string you = Json(Json::object{{"you", me}}).dump();
@@ -318,7 +322,7 @@ class Game {
             prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
-	  if (FLAGS_options) rest_options_[p] -= options;
+          if (FLAGS_options) rest_options_[p] -= options;
         }
       }
     } else if (FLAGS_options && !got["option"].is_null()) {

@@ -89,7 +89,7 @@ function GetScores($command) {
   $passed_punters = [];
   foreach (explode("\n", $output) as $line) {
     $result = json_decode($line, TRUE);
-    if (isset($result['pass'])) {
+    if (isset($result['pass']) && isset($result['error'])) {
       $passed_punters[$result['pass']['punter']] = TRUE;
     }
     if (isset($result['scores'])) {

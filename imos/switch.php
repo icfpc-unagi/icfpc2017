@@ -91,13 +91,21 @@ function Start() {
   }
 }
 
+function RunCommand($command) {
+  global $PROCS;
+
+  Write($PROCS[0]['pipes'][0], $command);
+  return Read($PROCS[0]['pipes'][1]);
+}
+
 function ReadCommand() {
   global $PROCS;
 
   $command = Read(STDIN);
-  Write($PROCS[0]['pipes'][0], $command);
-  $result = Read($PROCS[0]['pipes'][1]);
-  Write(STDOUT, $result);
+
+  if (!isset($command['stop'])) {
+    Write(STDOUT, RunCommand($command));
+  }
 
   foreach ($PROCS as $proc) {
     fclose($proc['pipes'][0]);
