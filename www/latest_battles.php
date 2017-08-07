@@ -6,10 +6,14 @@ StartPage();
 
 $is_queue = @intval($_GET['is_queue']);
 $map_id = @intval($_GET['map_id']);
+$ai_id = @intval($_GET['ai_id']);
 
 $where = 'WHERE TRUE';
 if ($map_id > 0) {
   $where .= ' AND map_id = ' . $map_id;
+}
+if ($ai_id > 0) {
+  $where .= ' AND ai_id = ' . $ai_id;
 }
 
 if (!$is_queue) {
@@ -21,7 +25,9 @@ if (!$is_queue) {
           ORDER BY battle_modified DESC LIMIT 100";
 } else {
   $sql = "SELECT * FROM battle NATURAL JOIN map
+          FROM battle NATURAL JOIN map NATURAL JOIN punter
           $where
+          GROUP BY battle_id
           ORDER BY battle_created DESC LIMIT 100";
 }
 
@@ -54,9 +60,16 @@ echo '<option value="0"' . ($map_id == 0 ? ' selected' : '') . '>すべて</opti
 foreach (Database::Select('SELECT * FROM map') as $map) {
   echo '<option value="' . $map['map_id'] . '"' . ($map_id == $map['map_id'] ? ' selected' : '') . '>' . $map['map_key'] . '</option>';
 }
-echo '</select><br>';
+echo '</select>';
 
-echo '<input class="form-control" type="submit" value="検索">';
+echo 'AIの種類 <select class="form-control" name="ai_id">';
+echo '<option value="0"' . ($ai_id == 0 ? ' selected' : '') . '>すべて</option>';
+foreach (Database::Select('SELECT * FROM ai ORDER BY ai_id DESC') as $ai) {
+  echo '<option value="' . $ai['ai_id'] . '"' . ($ai_id == $ai['ai_id'] ? ' selected' : '') . '>' . $ai['ai_key'] . '</option>';
+}
+echo '</select>';
+
+echo '<br><input class="form-control" type="submit" value="検索">';
 
 echo '<div class="container">';
 
