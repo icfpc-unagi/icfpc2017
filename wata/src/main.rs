@@ -21,6 +21,7 @@ struct Input {
 	punter: Option<usize>,
 	punters: Option<usize>,
 	map: Option<Map>,
+	settings: Option<Settings>,
 	#[serde(rename="move")]
 	move_: Option<Moves>,
 	state: Option<State>,
@@ -46,6 +47,13 @@ struct River {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+struct Settings {
+	futures: bool,
+	splurges: bool,
+	options: bool
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Moves {
 	moves: Vec<Move>
 }
@@ -53,6 +61,8 @@ struct Moves {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Move {
 	claim: Option<Claim>,
+	splurge: Option<Splurge>,
+	option: Option<Claim>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -60,6 +70,12 @@ struct Claim {
 	punter: usize,
 	source: i64,
 	target: i64
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+struct Splurge {
+	punter: usize,
+	route: Vec<i64>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -78,11 +94,13 @@ struct Play {
 pub struct State {
 	p: usize,
 	my: usize,
+	turn: usize,
 	es: Vec<(usize, usize)>,
 	graph: Vec<Vec<(usize, usize)>>,
 	mines: Vec<usize>,
-	moves: Vec<Option<usize>>,
+	moves: Vec<(usize, usize)>,
 	names: Vec<i64>,
+	settings: Settings,
 	ai: String
 }
 
@@ -122,7 +140,7 @@ fn setup(input: Input, ai: &str) -> Ready {
 	mines.sort();
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
-	let mut state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
+	let mut state = State { p, my, turn: my, es, graph, mines, moves: vec![], names, settings: input.settings.unwrap(), ai: Default::default() };
 	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2);
 	Ready { ready: my, state }
 }
@@ -130,28 +148,34 @@ fn setup(input: Input, ai: &str) -> Ready {
 fn play(input: Input, ai: &str) -> Play {
 	let moves = input.move_.unwrap().moves;
 	let p = moves.len();
-	let mut last = vec![None; p];
 	let mut state = input.state.unwrap();
-	for m in moves {
-		if let Some(Claim{punter, source, target}) = m.claim {
+	for i in 0..state.p {
+		let q = (state.my + i) % state.p;
+		if moves[q].claim.is_some() {
+			let Claim{punter, source, target} = moves[q].claim.clone().unwrap();
 			let u = state.names.binary_search(&source).unwrap();
 			let v = state.names.binary_search(&target).unwrap();
 			let e = state.graph[u].binary_search_by(|&(w, _)| w.cmp(&v)).unwrap();
-			last[punter] = Some(state.graph[u][e].1);
-		}
-	}
-	if state.moves.len() == 0 {
-		for i in 0..state.my {
-			state.moves.push(last[i]);
-		}
-	} else {
-		for i in 1..state.p {
-			state.moves.push(last[(state.my + i) % state.p]);
+			state.moves.push((q, state.graph[u][e].1));
+		} else if moves[q].splurge.is_some() {
+			let Splurge{punter, route} = moves[q].splurge.clone().unwrap();
+			for j in 0..route.len() - 1 {
+				let u = state.names.binary_search(&route[j]).unwrap();
+				let v = state.names.binary_search(&route[j + 1]).unwrap();
+				let e = state.graph[u].binary_search_by(|&(w, _)| w.cmp(&v)).unwrap();
+				state.moves.push((q, state.graph[u][e].1));
+			}
+		} else if moves[q].option.is_some() {
+			let Claim{punter, source, target} = moves[q].option.clone().unwrap();
+			let u = state.names.binary_search(&source).unwrap();
+			let v = state.names.binary_search(&target).unwrap();
+			let e = state.graph[u].binary_search_by(|&(w, _)| w.cmp(&v)).unwrap();
+			state.moves.push((q, state.graph[u][e].1));
 		}
 	}
 	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
-	state.moves.push(Some(e));
+	state.turn += state.p;
 	eprintln!("{}: {} {}", state.my, claim.source, claim.target);
 	Play { claim, state }
 }
