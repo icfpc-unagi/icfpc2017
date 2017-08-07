@@ -95,8 +95,7 @@ function RunCommand($command) {
   global $PROCS;
 
   if (isset($command['map'])) {
-    $settings = isset($command['map']['settings'])
-        ? $command['map']['settings'] : [];
+    $settings = isset($command['settings']) ? $command['settings'] : [];
     if (@$settings['options']) {
       $child = 1;
     } else {
