@@ -36,6 +36,10 @@ if ($battle['map_extensions']) {
   $master[] = '--futures';
   $master[] = '--options';
   $master[] = '--splurges';
+} else {
+  $master[] = '--nofutures';
+  $master[] = '--nooptions';
+  $master[] = '--nosplurges';
 }
 
 foreach ($battle['punter'] as $punter) {

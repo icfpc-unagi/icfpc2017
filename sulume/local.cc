@@ -302,7 +302,7 @@ class Game {
             sts.emplace_back(s, t);
             if (rivers_[ri] == 1) options++;
           }
-          if (rest_options_[p] < options) {
+          if (FLAGS_options && rest_options_[p] < options) {
             LOG(ERROR) << ais_[p] << ": splurged " << options
                        << " options but had " << rest_options_[p]
                        << " remaining:" << splurge.dump();
@@ -318,7 +318,7 @@ class Game {
             prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
-          rest_options_[p] -= options;
+	  if (FLAGS_options) rest_options_[p] -= options;
         }
       }
     } else if (FLAGS_options && !got["option"].is_null()) {
@@ -398,7 +398,8 @@ class Game {
     for (int p = 0; p < ais_.size(); ++p) {
       int score = 0;
       for (int i = 0; i < mines_.size(); ++i) {
-        int bet = FindWithDefault(futures_[p], mines_[i], -1);
+        int bet =
+            FLAGS_futures ? FindWithDefault(futures_[p], mines_[i], -1) : -1;
         vector<bool> visited(n);
         std::stack<int> st;
         st.push(mines_[i]);
