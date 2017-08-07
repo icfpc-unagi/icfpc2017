@@ -7,7 +7,7 @@ struct AI {
 }
 
 pub fn setup(state: &mut State) {
-	eprintln!("twophases");
+	eprintln!("shortest2");
 }
 
 fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, i: usize) -> (Vec<Vec<(usize, usize)>>, Vec<usize>) {
@@ -58,8 +58,8 @@ pub fn play(state: &mut State) -> usize {
 	for e in 0..m {
 		if user[e] != !0 { score[e] = -1.0 }
 	}
-	{
-		let (g, id) = get_graph(&state.graph, &user, state.my);
+	for q in 0..state.p {
+		let (g, id) = get_graph(&state.graph, &user, q);
 		let n = g.len();
 		for (i, &s_) in state.mines.iter().enumerate() {
 			let s = id[s_];
@@ -82,10 +82,7 @@ pub fn play(state: &mut State) -> usize {
 			}
 			let mut sum = vec![0.0; n];
 			for v in 0..id.len() {
-				// if ds[id[v]] <= dist[i][v] {
-					// sum[id[v]] += (dist[i][v] * dist[i][v]) as f64;
-					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
-				// }
+				sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
 			}
 			for &u in que[..qt].iter().rev() {
 				let mut count: usize = 0;
@@ -97,51 +94,53 @@ pub fn play(state: &mut State) -> usize {
 				for &(v, e) in &g[u] {
 					if ds[v] + 1 == ds[u] {
 						let w = sum[u] as f64 / count as f64;
-						score[e] += w;
+						if q == state.my {
+							score[e] += w;
+						} else {
+							score[e] += w / (state.p - 1) as f64;
+						}
 						sum[v] += w;
 					}
 				}
 			}
 		}
 	}
-	let mut sorted: Vec<_> = score.iter().enumerate().map(|(e, &s)| (Rev(s), e)).collect();
-	sorted.sort();
-	let mut ret = sorted[0].1;
-	let mut maxscore = -1e50;
-	'lp: for r in 0..10 {
-		if r >= sorted.len() || (sorted[r].0).0 < 0.0 { break }
-		let e = sorted[r].1;
-		let mut score = 0.0;
-		for q in 0..2 {
-			user[e] = if q == 0 { state.my } else { !1 };
-			let (g, id) = get_graph(&state.graph, &user, state.my);
-			let g: Vec<Vec<_>> = g.into_iter().map(|v| v.into_iter().map(|(w, _)| w).collect()).collect();
-			let n = g.len();
-			for (i, &s_) in state.mines.iter().enumerate() {
-				let d = ::STIME().elapsed().unwrap();
-				let s = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
-				if s > 0.8 {
-					eprintln!("break: {}", s);
-					break 'lp;
-				}
-				let s = id[s_];
-				let ds = ::lib::bfs(&g, s);
-				for v in 0..id.len() {
-					if ds[id[v]] <= n {
-						if q == 0 {
-							score += (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
-						} else {
-							score -= (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
-						}
-					}
+	let mut connected = vec![!0; n];
+	let mut stack = vec![];
+	for &s in &state.mines {
+		if connected[s] != !0 { continue }
+		connected[s] = s;
+		stack.push(s);
+		while let Some(u) = stack.pop() {
+			for &(v, e) in &state.graph[u] {
+				if user[e] == state.my && connected[v] == !0 {
+					connected[v] = s;
+					stack.push(v);
 				}
 			}
-			user[e] = !0;
-		}
-		if maxscore.setmax(score) {
-			ret = e;
 		}
 	}
-	debug!(maxscore);
-	ret
+	let w = if state.p <= 4 { 1.0 } else if state.p <= 8 { 1.2 } else { 2.0 };
+	for &u in &state.mines {
+		for &(_, e) in &state.graph[u] {
+			if connected[state.es[e].0] != connected[state.es[e].1] {
+				score[e] *= w;
+			}
+		}
+	}
+	for u in 0..n {
+		for &(_, e) in &state.graph[u] {
+			if connected[state.es[e].0] != connected[state.es[e].1] {
+				score[e] *= w;
+			}
+		}
+	}
+	let mut e = 0;
+	for i in 0..m {
+		if score[e] < score[i] {
+			e = i;
+		}
+	}
+	debug!(score[e]);
+	e
 }
