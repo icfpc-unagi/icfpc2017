@@ -45,7 +45,7 @@ echo '</select>';
 echo 'マップの種類 <select class="form-control" name="map_id">';
 echo '<option value="0"' . ($map_id == 0 ? ' selected' : '') . '>すべて</option>';
 foreach (Database::Select('SELECT * FROM map') as $map) {
-  echo '<option value="' . $map['map_id'] . '"' . ($map_id == $map['map_id'] ? ' selected' : '') . '>' . $map['map_key'] . '</option>';
+  echo '<option value="' . $map['map_id'] . '"' . ($map_id == $map['map_id'] ? ' selected' : '') . '>' . $map['map_key'] . ($map['map_extensions'] ? ' (拡張あり)' : '') . '</option>';
 }
 echo '</select>';
 
@@ -56,7 +56,7 @@ foreach (Database::Select('SELECT * FROM ai ORDER BY ai_id DESC') as $ai) {
 }
 echo '</select>';
 
-echo '<br><input class="form-control" type="submit" value="検索">';
+echo '<br><input class="form-control" type="submit" value="検索"></form>';
 
 echo '<div class="container">';
 
