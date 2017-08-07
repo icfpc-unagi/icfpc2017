@@ -22,7 +22,8 @@ data Query =
     QueryInit {
       punter :: PunterId,
       punters :: Nat,
-      map_ :: Map_
+      map_ :: Map_,
+      settings :: Settings
       }
   | QueryMove {
       moves :: [Move]
@@ -39,6 +40,7 @@ instance FromJSON Query where
       <$> v .: "punter"
       <*> v .: "punters"
       <*> v .: "map"
+      <*> v .:? "settings" .!= defaultSettings
     )
     <|>
     (v .: "move" >>=
@@ -172,6 +174,21 @@ instance Eq River where
   (River s0 t0) == (River s1 t1) = or [
     s0 == s1 && t0 == t1,
     s0 == t1 && t0 == s1]
+
+
+data Settings = Settings {
+  futures, splurges, options :: Bool
+  }
+  deriving Show
+instance FromJSON Settings where
+  parseJSON = withObject "Settings" $ \ v -> Settings
+    <$> v .:? "futures" .!= False
+    <*> v .:? "splurges" .!= False
+    <*> v .:? "options" .!= False
+
+defaultSettings = Settings {
+  futures=False, splurges=False, options=False
+  }
 
 
 type Nat = Int
