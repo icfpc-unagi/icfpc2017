@@ -220,7 +220,7 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
 
     cerr << json11::Json(futures_json).dump() << endl;
   } else {
-    cerr << in_json.dump() << endl;
+    cerr << in_json["move"].dump() << endl;
 
     // Play
     MyState s = GetState<AIState>(in_json);
