@@ -53,10 +53,18 @@ ai (P.QueryMove moves) = do
     then do
       aiClaimOrOpt
     else do
-      put (punter, vs, es, 0, opCnt)
       r1 <- liftIO $ randomChoice goodVs
       [r0, r2] <- liftIO $ randomSample 2 $ S.toList $ (G.edges g) M.! r1
-      return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
+      let
+        usedOpt = [e |
+          e <- [(r0, r1), (r1, r2)],
+          es M.! e == 1]
+        opCntNew = opCnt - length usedOpt
+      if opCntNew < 0
+      then aiClaimOrOpt
+      else do
+        put (punter, vs, es, 0, opCntNew)
+        return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
 
 aiClaimOrOpt = do
   (punter, vs, es, passCnt, opCnt) <- get
