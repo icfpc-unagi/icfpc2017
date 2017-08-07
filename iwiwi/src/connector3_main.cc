@@ -54,10 +54,11 @@ pair<int, int> Greedy(const GameState &game) {
 namespace {
 struct MyAIState {
   int u, v;
+  int n_options;
 
   template<class Archive>
   void serialize(Archive& ar, unsigned int ver) {
-    ar & u & v;
+    ar & u & v & n_options;
   }
 };
 
@@ -122,8 +123,10 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
   assert(false);
 }
 
-pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
+pair<tuple<string, int, int>, MyAIState> Play(MyState &state) {
   // return make_pair(Greedy(state.game), state.ai);
+
+  cerr << "Options used: " << state.ai.n_options << endl;
 
   JLOG_PUT_BENCHMARK("time") {
     rep (iter, 2) {
@@ -178,9 +181,13 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
         if (u > v) swap(u, v);
         if (se.count(make_pair(u, v))) {
           auto ans = FindOriginalEdge(u, v, uf, G);
-
-          if (iter == 0) return mp(make_tuple("claim",  ans.first, ans.second), state.ai);
-          else           return mp(make_tuple("option", ans.first, ans.second), state.ai);
+          if (ans != mp(-1, -1)) {
+            return mp(make_tuple("claim",  ans.first, ans.second), state.ai);
+          } else {
+            ans = FindOriginalEdge(u, v, uf, G, true);
+            ++state.ai.n_options;
+            return mp(make_tuple("option", ans.first, ans.second), state.ai);
+          }
         }
       }
     }
