@@ -9,7 +9,7 @@ $extension = @intval($_GET['extension']);
 
 echo '<h2>順位表</h2>';
 echo '<form action="?" method="GET">';
-echo '検索件数 <select class="form-control" name="is_queue">';
+echo '検索件数 <select class="form-control" name="limit">';
 foreach ([5000, 3000, 1000, 10000] as $limit) {
   echo '<option value=""' . ($limit == $current_limit ? ' selected' : '') . ">最新 $limit 件</option>";
 }
