@@ -151,7 +151,7 @@ canvas.emscripten { border: 0px none; }
 	      </ul>
 
           <center>
-          <img src="002.png">
+          <img src="004.png">
           </center>
       </div><!--/row-->
 
