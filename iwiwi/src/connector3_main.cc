@@ -234,7 +234,7 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
           {"target", s.game.map.sites[get<2>(res.first)].id}}},
       {"state", DumpState(s) }};
 
-    cerr << out_json.dump() << endl;
+    // cerr << out_json.dump() << endl;
   }
 
   // Output
