@@ -7,13 +7,15 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.State
 import Data.List
 import qualified Data.Map.Strict as M
+import Data.Maybe
 import qualified Data.Set as S
+import Data.Tuple
 
 import qualified Graph.Adj as G
 import Lib.Random
 
 import qualified Protocol as P
-import Protocol.Ext (riversFromMove)
+-- import Protocol.Ext (riversFromMove)
 
 type Edge = (Int, Int)
 type MyState = (P.PunterId, [Int], M.Map Edge Int, Int, Int)
@@ -23,7 +25,7 @@ ai :: P.Punter (StateT MyState IO)
 ai (P.QueryInit punter punters map_) = do
   let
     vs = [i | P.Site i <- P.sites map_]
-    es = concat [[(s, t), (t, s)] | P.River s t <- P.rivers map_]
+    es = [(s, t) | P.River s t <- P.rivers map_]
     opCnt = length $ P.mines map_
   put (punter, vs, M.fromList [(e, 2) | e <- es], 0, opCnt)
   return $ P.AnswerReady punter
@@ -31,7 +33,7 @@ ai (P.QueryInit punter punters map_) = do
 ai (P.QueryMove moves) = do
   (punter, vs, esOld, passCnt, opCnt) <- get
   let
-    es = removeClaimed moves esOld
+    es = removeClaimed punter moves esOld
   put (punter, vs, es, passCnt, opCnt)
 
   if passCnt == 0
@@ -58,7 +60,7 @@ ai (P.QueryMove moves) = do
       let
         usedOpt = [e |
           e <- [(r0, r1), (r1, r2)],
-          es M.! e == 1]
+          needOpt es e]
         opCntNew = opCnt - length usedOpt
       if opCntNew < 0
       then aiClaimOrOpt
@@ -66,16 +68,43 @@ ai (P.QueryMove moves) = do
         put (punter, vs, es, 0, opCntNew)
         return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
 
+needOpt es e = let
+  [n] = catMaybes [M.lookup e es, M.lookup (swap e) es]
+  in n == 1
+
 aiClaimOrOpt = do
   (punter, vs, es, passCnt, opCnt) <- get
-  e@(s, t) <- liftIO $ randomChoice $ M.keys es
-  if es M.! e == 1
-  then do
-    put (punter, vs, es, passCnt, opCnt - 1)
-    return $ P.AnswerMove $ P.MoveOption punter s t
-  else
-    return $ P.AnswerMove $ P.MoveClaim punter s t
+  if opCnt == 0
+  then aiClaim
+  else do
+    e@(s, t) <- liftIO $ randomChoice $ M.keys es
+    if needOpt es e
+    then do
+      put (punter, vs, es, passCnt, opCnt - 1)
+      return $ P.AnswerMove $ P.MoveOption punter s t
+    else
+      return $ P.AnswerMove $ P.MoveClaim punter s t
 
-removeClaimed moves es = M.filter (/= 0) $ M.unionsWith (+) $ es : css
+aiClaim = do
+  (punter, vs, es, passCnt, opCnt) <- get
+  (s, t) <- liftIO $ randomChoice $ M.keys . M.filter (== 2) $ es
+  return $ P.AnswerMove $ P.MoveClaim punter s t
+
+removeClaimed punter moves es = M.differenceWith subNat es cs
   where
-    css = [M.fromList [((s, t), -1), ((t, s), -1)] | P.River s t <- concatMap riversFromMove moves]
+    subNat n m = let
+      a = n - m
+      in if a < 0 then Nothing else Just a
+    css0 = concatMap (riversCnt punter) moves
+    css1 = map (\((s,t),n) -> ((t,s),n)) css0
+    cs = M.unionWith (+) (M.fromList css0) (M.fromList css1)
+    
+riversCnt :: P.PunterId -> P.Move -> [(Edge, Int)]
+riversCnt punter (P.MoveClaim p s t) 
+  | p == punter  = [((s, t), 2)]
+  | otherwise    = [((s, t), 1)]
+riversCnt punter (P.MovePass p) = []
+riversCnt punter (P.MoveSplurge p r)
+  | p == punter  = [((s, t), 2) | (s, t) <- zip r (tail r)]
+  | otherwise    = [((s, t), 1) | (s, t) <- zip r (tail r)]
+riversCnt punter (P.MoveOption p s t) = [((s, t), 1)]
