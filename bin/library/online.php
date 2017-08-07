@@ -181,7 +181,7 @@ function Main() {
       $num_rivers = count($rivers);
       $punter_counts = array_count_values($rivers);
       $num_empty_rivers = $punter_counts[-1] ?: 0;
-      $num_my_rivers = $punter_counts[$punter_id] ?: 0;
+      $num_my_rivers = @intval($punter_counts[$punter_id]);
       Message('0;33', 'Occupied rivers: ' . ($num_rivers - $num_empty_rivers) .
                       ' (' . $num_my_rivers . ') / ' . $num_rivers);
       if (isset($state)) {
