@@ -61,26 +61,10 @@ pub fn play(state: &mut State) -> usize {
 		if user[e] != !0 { score[e] = -1.0 }
 	}
 	let ex = 0.4 + 0.5 * (state.es.len() - state.turn) as f64 / state.es.len() as f64;
-	let mut score2 = vec![0.0; m];
-	let mut ps = vec![];
-	ps.push(state.my);
 	for q in 0..state.p {
-		if q != state.my {
-			ps.push(q);
-		}
-	}
-	'lp: for q in ps {
 		let (g, id) = get_graph(&state.graph, &user, &opt, q);
 		let n = g.len();
 		for (i, &s_) in state.mines.iter().enumerate() {
-			{
-				let d = ::STIME().elapsed().unwrap();
-				let s = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
-				if s > 0.8 {
-					eprintln!("break: {}", s);
-					break 'lp;
-				}
-			}
 			let s = id[s_];
 			let (mut qs, mut qt) = (0, 0);
 			let mut que = vec![!0; n];
@@ -101,11 +85,7 @@ pub fn play(state: &mut State) -> usize {
 			}
 			let mut sum = vec![0.0; n];
 			for v in 0..id.len() {
-				if ds[id[v]] <= dist[i][v] {
-					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64);
-				} else {
-					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64) * 0.5f64.powf((ds[id[v]] - dist[i][v]) as f64);
-				}
+				sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * ex.powf(ds[id[v]] as f64);
 			}
 			for &u in que[..qt].iter().rev() {
 				let mut count: usize = 0;
@@ -120,19 +100,12 @@ pub fn play(state: &mut State) -> usize {
 						if q == state.my {
 							score[e] += w;
 						} else {
-							score2[e] += w / (state.p - 1) as f64;
+							score[e] += w / (state.p - 1) as f64;
 						}
 						sum[v] += w;
 					}
 				}
 			}
-		}
-	}
-	let mut maxs: f64 = 0.0;
-	for &s in &score { maxs.setmax(s); }
-	for e in 0..state.es.len() {
-		if score[e] >= maxs / 2.0 {
-			score[e] += score2[e];
 		}
 	}
 	let mut connected = vec![!0; n];
@@ -206,7 +179,7 @@ pub fn play(state: &mut State) -> usize {
 				e2 = i;
 			}
 		}
-		if opt_n[state.my] < state.mines.len() && score[e] < score_opt[e2] as f64 * 2.0 {
+		if opt_n[state.my] < state.mines.len() && score[e] < score_opt[e2] as f64 {
 			e = e2;
 		}
 		e
