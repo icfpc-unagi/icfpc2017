@@ -46,7 +46,7 @@ struct River {
 	target: i64
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Settings {
 	futures: bool,
 	splurges: bool,
@@ -140,7 +140,7 @@ fn setup(input: Input, ai: &str) -> Ready {
 	mines.sort();
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
-	let mut state = State { p, my, turn: my, es, graph, mines, moves: vec![], names, settings: input.settings.unwrap(), ai: Default::default() };
+	let mut state = State { p, my, turn: my, es, graph, mines, moves: vec![], names, settings: input.settings.unwrap_or(Default::default()), ai: Default::default() };
 	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases);
 	Ready { ready: my, state }
 }
