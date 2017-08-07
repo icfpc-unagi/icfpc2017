@@ -4,12 +4,10 @@ use ::State;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct AI {
-	turn: usize
 }
 
 pub fn setup(state: &mut State) {
 	eprintln!("shortest2");
-	state.ai = ::serde_json::to_string(&AI { turn: state.my }).unwrap();
 }
 
 fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, i: usize) -> (Vec<Vec<(usize, usize)>>, Vec<usize>) {
@@ -43,8 +41,6 @@ fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, i: usize) -> (
 }
 
 pub fn play(state: &mut State) -> usize {
-	let ai: AI = ::serde_json::from_str(&state.ai).unwrap();
-	state.ai = ::serde_json::to_string(&AI { turn: ai.turn + state.p }).unwrap();
 	let g = state.graph.iter().map(|u| u.iter().map(|&(v, _)| v).collect()).collect();
 	let dist: Vec<_> = state.mines.iter().map(|&v| ::lib::bfs(&g, v)).collect();
 	let n = state.graph.len();
@@ -87,7 +83,8 @@ pub fn play(state: &mut State) -> usize {
 			let mut sum = vec![0.0; n];
 			for v in 0..id.len() {
 				if ds[id[v]] <= dist[i][v] {
-					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64;
+					// sum[id[v]] += (dist[i][v] * dist[i][v]) as f64;
+					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64);
 				}
 			}
 			for &u in que[..qt].iter().rev() {
@@ -126,17 +123,18 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
+	let w = if state.p <= 4 { 1.0 } else if state.p <= 8 { 1.2 } else { 2.0 };
 	for &u in &state.mines {
 		for &(_, e) in &state.graph[u] {
 			if connected[state.es[e].0] != connected[state.es[e].1] {
-				score[e] *= 2.0;
+				score[e] *= w;
 			}
 		}
 	}
 	for u in 0..n {
 		for &(_, e) in &state.graph[u] {
 			if connected[state.es[e].0] != connected[state.es[e].1] {
-				score[e] *= 2.0;
+				score[e] *= w;
 			}
 		}
 	}
