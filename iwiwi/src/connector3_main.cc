@@ -157,6 +157,8 @@ pair<tuple<string, int, int>, MyAIState> Play(MyState &state) {
   JLOG_PUT_BENCHMARK("time") {
     rep (iter, 2) {
       bool allow_option = iter;
+      if (allow_option && !state.game.options) break;
+
       // iter == 0 -> normal edges
       // iter == 1 -> option edges
       cerr << "--------------------------------------------------------" << endl;
@@ -273,13 +275,20 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
             {"target", s.game.map.sites[f.second].id}});
     }
 
-    out_json = json11::Json::object{
-      {"ready", s.game.rank},
-      {"state", DumpState(s)},
-      {"futures", futures_json},
-    };
+    if (s.game.futures) {
+      out_json = json11::Json::object{
+        {"ready", s.game.rank},
+        {"state", DumpState(s)},
+        {"futures", futures_json},
+      };
+    } else {
+      out_json = json11::Json::object{
+        {"ready", s.game.rank},
+        {"state", DumpState(s)},
+      };
+    }
 
-    cerr << json11::Json(futures_json).dump() << endl;
+    cerr << s.game.futures <<  json11::Json(futures_json).dump() << endl;
   } else {
     cerr << in_json["move"].dump() << endl;
 
