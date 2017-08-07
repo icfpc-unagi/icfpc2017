@@ -194,7 +194,9 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
     vector<json11::Json> futures_json;
     for (auto &f : futures) {
       futures_json.emplace_back(
-          json11::Json::object{{"source", f.first}, {"target", f.second}});
+          json11::Json::object{
+            {"source", s.game.map.sites[f.first].id},
+            {"target", s.game.map.sites[f.second].id}});
     }
 
     out_json = json11::Json::object{

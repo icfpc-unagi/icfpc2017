@@ -168,7 +168,7 @@ pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &
   set<pair<int, int>> es;
   rep (v, original_g.size()) for (const auto &e : original_g[v]) {
     if (e.owner == -1) es.emplace(min(v, e.to), max(v, e.to));
-    if (allow_option) if (e.owner2 == -1) es.emplace(min(v, e.to), max(v, e.to));
+    if (allow_option && e.owner2 == -1) es.emplace(min(v, e.to), max(v, e.to));
   }
 
   for (int v : uf.vertices[a]) {
