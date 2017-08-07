@@ -126,12 +126,28 @@ State<AIState> GetState(const json11::Json &j) {
   s.game.turn += 1;
   auto moves = j["move"]["moves"].array_items();
   for (auto &&move : moves) {
-    if (move["claim"].is_null()) continue;
-    auto jj = move["claim"];
-    s.game.claims.emplace_back
-        (Claim{jj["punter"].int_value(),
-              id_to_idx[jj["source"].int_value()],
-              id_to_idx[jj["target"].int_value()]});
+    if (!move["claim"].is_null()) {
+      auto jj = move["claim"];
+      s.game.claims.emplace_back
+          (Claim{jj["punter"].int_value(),
+                id_to_idx[jj["source"].int_value()],
+                id_to_idx[jj["target"].int_value()]});
+    } else if (!move["option"].is_null()) {
+      auto jj = move["option"];
+      s.game.claims.emplace_back
+          (Claim{jj["punter"].int_value(),
+                id_to_idx[jj["source"].int_value()],
+                id_to_idx[jj["target"].int_value()]});
+    } else if (!move["splurge"].is_null()) {
+      auto jj = move["splurge"];
+      auto jr = jj["route"].array_items();
+      for (int i = 0; i + 1 < (int)jr.size(); ++i) {
+        s.game.claims.emplace_back
+            (Claim{jj["punter"].int_value(),
+                  id_to_idx[jr[i].int_value()],
+                  id_to_idx[jr[i + 1].int_value()]});
+      }
+    }
   }
   return s;
 }
