@@ -164,21 +164,19 @@ void SingleSourceWeightedBetweenness
   }
 }
 
-pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g) {
-  rep (iter, 2) {
-    set<pair<int, int>> es;
-    rep (v, original_g.size()) for (const auto &e : original_g[v]) {
-      if (iter == 0) if (e.owner == -1) es.emplace(min(v, e.to), max(v, e.to));
-      if (iter == 1) if (e.owner2 == -1) es.emplace(min(v, e.to), max(v, e.to));
-    }
+pair<int, int> FindOriginalEdge(int a, int b, const UnionFind &uf, const Graph &original_g, bool allow_option) {
+  set<pair<int, int>> es;
+  rep (v, original_g.size()) for (const auto &e : original_g[v]) {
+    if (e.owner == -1) es.emplace(min(v, e.to), max(v, e.to));
+    if (allow_option) if (e.owner2 == -1) es.emplace(min(v, e.to), max(v, e.to));
+  }
 
-    for (int v : uf.vertices[a]) {
-      for (int w : uf.vertices[b]) {
-        if (es.count(make_pair(min(v, w), max(v, w)))) {
-          return make_pair(v, w);
-        }
+  for (int v : uf.vertices[a]) {
+    for (int w : uf.vertices[b]) {
+      if (es.count(make_pair(min(v, w), max(v, w)))) {
+        return make_pair(v, w);
       }
     }
   }
-  assert(false);
+  return make_pair(-1, -1);
 }
