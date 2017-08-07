@@ -74,11 +74,18 @@ function GetScores($command) {
   Post("http://proxy.sx9.jp/api/add_battle_log.php?" .
        "battle_id={$battle['battle_id']}",
        ['battle_log_data' => $output,
-        'battle_log_info' => gethostname() . "\n\n" . file_get_contents($stderr_file)]);
+        'battle_log_info' => gethostname() . "\nCommand: " . $command . "\n\n" . file_get_contents($stderr_file)]);
   @unlink($stderr_file);
+  $passed_punters = [];
   foreach (explode("\n", $output) as $line) {
     $result = json_decode($line, TRUE);
+    if (isset($result['pass'])) {
+      $passed_punters[$result['pass']['punter']] = TRUE;
+    }
     if (isset($result['scores'])) {
+      foreach ($result['scores'] as $index => $score) {
+        $result['scores'][$index]['punter_pass'] = @intval($passed_punters[$score['punter']]);
+      }
       return $result;
     }
   }
@@ -91,5 +98,5 @@ foreach ($scores['scores'] as $index => $score) {
   $punter = $battle['punter'][$index];
   $result = file_get_contents(
       "http://proxy.sx9.jp/api/update_punter.php?" .
-      "punter_id={$punter['punter_id']}&punter_score={$score['score']}");
+      "punter_id={$punter['punter_id']}&punter_score={$score['score']}&punter_pass={$score['punter_pass']}");
 }
