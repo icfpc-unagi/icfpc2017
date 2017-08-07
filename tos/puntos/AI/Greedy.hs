@@ -9,11 +9,13 @@ import Control.Monad.Trans.State
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import Data.Semigroup
 import qualified Data.Set as S
 import Data.Tuple
 
 import qualified Graph.Adj as G
 import Graph.Dijkstra (dijkstra1)
+import Graph.UnionFind
 import Lib.EPrint
 import Lib.Random
 
@@ -21,7 +23,16 @@ import qualified Protocol as P
 -- import Protocol.Ext (riversFromMove)
 
 type Edge = (Int, Int)
-type MyState = (P.PunterId, [Int], M.Map Edge Int, Int, Int)
+type MyState = (ROState, M.Map Edge Int, [Edge], Int)
+
+type ROState = (P.PunterId, DistTable, Bool, [Int])
+type DistTable = M.Map P.SiteId (M.Map P.SiteId Int)
+
+
+data MyWt = MyWt { cMines, cSites :: S.Set P.SiteId }
+instance Semigroup MyWt where
+  MyWt m1 s1 <> MyWt m2 s2 = MyWt (S.union m1 m2) (S.union s1 s2)
+
 
 ai :: P.Punter (StateT MyState IO)
 
@@ -34,72 +45,81 @@ ai (P.QueryInit punter punters map_ settings) = do
   let
     g = G.buildUndir vs es
     adj v = S.toList $ G.edges g M.! v
-    distTable = [(v0, dijkstra1 v0 adj) | v0 <- mines]
+    distTable = M.fromList [(v0, dijkstra1 v0 adj) | v0 <- mines]
   -- forM mines $ \ v0 -> liftIO $ eprint $ dijkstra1 v0 adj
 
-  put (punter, vs, M.fromList [(e, 2) | e <- es], 0, opCnt)
+  put ((punter, distTable, P.options settings, vs),
+    M.fromList [(e, 2) | e <- es], [], opCnt)
   return $ P.AnswerReady punter
 
+
 ai (P.QueryMove moves) = do
-  (punter, vs, esOld, passCnt, opCnt) <- get
-  -- liftIO $ eprint (passCnt, opCnt)
+  (readOnly, esOld, myEs, opCnt) <- get
+  -- liftIO $ eprint opCnt
   let
+    (punter, distTable, flagOptions, vs) = readOnly
     es = removeClaimed punter moves esOld
-  put (punter, vs, es, passCnt, opCnt)
+  put (readOnly, es, myEs, opCnt)
 
-  if passCnt == 0
-  then do
-    flag <- liftIO $ withProb 0.3
-    if flag
-    then do
-      put (punter, vs, es, passCnt + 1, opCnt)
-      return $ P.AnswerMove $ P.MovePass punter
-    else do
-      aiClaimOrOpt
-  else do
-    let
-      g = G.buildUndir vs $ M.keys es
-      degs = M.map length $ G.edges g
-      goodVs = M.keys $ M.filter (>= 2) degs
+  let
+    mines = M.keysSet distTable
+    esAvail = M.keys $
+      if opCnt >= 1 && flagOptions then es else M.filter (== 2) es
 
-    if null goodVs
-    then do
-      aiClaimOrOpt
-    else do
-      r1 <- liftIO $ randomChoice goodVs
-      [r0, r2] <- liftIO $ randomSample 2 $ S.toList $ (G.edges g) M.! r1
-      let
-        usedOpt = [e |
-          e <- [(r0, r1), (r1, r2)],
-          needOpt es e]
-        opCntNew = opCnt - length usedOpt
-      if opCntNew < 0
-      then aiClaimOrOpt
-      else do
-        put (punter, vs, es, 0, opCntNew)
-        return $ P.AnswerMove $ P.MoveSplurge punter [r0, r1, r2]
+  esWithScore :: [(Edge, Int)] <- runUnionFindT $ do
+    forM_ vs $ \ v ->
+      ufFresh v $ MyWt {
+        cMines=if S.member v mines then S.singleton v else S.empty,
+        cSites=S.singleton v }
+    forM_ myEs $ \ (s, t) -> ufUnify s t
+
+    forM esAvail $ \ e@(s, t) -> do
+      (c1, w1) <- ufGet s
+      (c2, w2) <- ufGet t
+      return (e,
+        if c1 == c2
+        then -1
+        else scoreIncr distTable w1 w2
+        )
+
+  let
+    ans = map fst . reverse $ sortOn snd esWithScore
+
+  case ans of
+    [] -> return $ P.AnswerMove $ P.MovePass punter
+    (e:_) -> aiClaimOrOpt e
+
+ai (P.QueryStop mvs scores) = do
+  -- TODO: Check my score
+  return P.AnswerNothing
+
+scoreIncr :: DistTable -> MyWt -> MyWt -> Int
+scoreIncr distTable (MyWt m1 s1) (MyWt m2 s2) = f m1 s2 + f m2 s1
+  where
+    f ms ss = sum [(distTable M.! m M.! s)^2 | m <- S.toList ms, s <- S.toList ss]
 
 needOpt es e = let
   [n] = catMaybes [M.lookup e es, M.lookup (swap e) es]
   in n == 1
 
-aiClaimOrOpt = do
-  (punter, vs, es, passCnt, opCnt) <- get
-  if opCnt == 0
-  then aiClaim
+aiClaimOrOpt e = do
+  let (s, t) = e
+  (readOnly, es, myEs, opCnt) <- get
+  let (punter, _,_,_) = readOnly
+  if needOpt es e
+  then do
+    put (readOnly, es, e : myEs, opCnt - 1)
+    return $ P.AnswerMove $ P.MoveOption punter s t
   else do
-    e@(s, t) <- liftIO $ randomChoice $ M.keys es
-    if needOpt es e
-    then do
-      put (punter, vs, es, passCnt, opCnt - 1)
-      return $ P.AnswerMove $ P.MoveOption punter s t
-    else
-      return $ P.AnswerMove $ P.MoveClaim punter s t
+    put (readOnly, es, e : myEs, opCnt)
+    return $ P.AnswerMove $ P.MoveClaim punter s t
 
+{-
 aiClaim = do
   (punter, vs, es, passCnt, opCnt) <- get
   (s, t) <- liftIO $ randomChoice $ M.keys . M.filter (== 2) $ es
   return $ P.AnswerMove $ P.MoveClaim punter s t
+-}
 
 removeClaimed punter moves es = M.differenceWith subNat es cs
   where
