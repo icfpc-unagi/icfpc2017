@@ -19,3 +19,5 @@ pub mod selfish;
 pub mod shortest2;
 
 pub mod twophases;
+
+pub mod shortest3;
