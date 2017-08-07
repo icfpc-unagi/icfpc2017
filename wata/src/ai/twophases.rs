@@ -82,10 +82,10 @@ pub fn play(state: &mut State) -> usize {
 			}
 			let mut sum = vec![0.0; n];
 			for v in 0..id.len() {
-				if ds[id[v]] <= dist[i][v] {
+				// if ds[id[v]] <= dist[i][v] {
 					// sum[id[v]] += (dist[i][v] * dist[i][v]) as f64;
-					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64);
-				}
+					sum[id[v]] += (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
+				// }
 			}
 			for &u in que[..qt].iter().rev() {
 				let mut count: usize = 0;
@@ -129,9 +129,9 @@ pub fn play(state: &mut State) -> usize {
 				for v in 0..id.len() {
 					if ds[id[v]] <= n {
 						if q == 0 {
-							score += (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64);
+							score += (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
 						} else {
-							score -= (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64);
+							score -= (dist[i][v] * dist[i][v]) as f64 * 0.8f64.powf(ds[id[v]] as f64);
 						}
 					}
 				}
