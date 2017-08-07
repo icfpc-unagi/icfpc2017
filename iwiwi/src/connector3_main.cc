@@ -127,6 +127,7 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
 
   JLOG_PUT_BENCHMARK("time") {
     rep (iter, 2) {
+      bool allow_option = iter;
       // iter == 0 -> normal edges
       // iter == 1 -> option edges
       cerr << "--------------------------------------------------------" << endl;
@@ -158,11 +159,12 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
       // Dinitz
       vector<pair<int, int>> es;
       rep (v, N) for (const auto &e: G[v]) {
-        if (e.owner != -1) continue;
-        int a = uf.root[v];
-        int b = uf.root[e.to];
-        if (a >= b) continue;
-        es.emplace_back(a, b);
+        if (e.owner == -1 || (allow_option && e.owner2 == -1)) {
+          int a = uf.root[v];
+          int b = uf.root[e.to];
+          if (a >= b) continue;
+          es.emplace_back(a, b);
+        }
       }
       agl::cut_tree_internal::dinitz dnz(agl::G(es, N));
       cerr << "Cut: " << dnz.max_flow(S, T) << endl;
