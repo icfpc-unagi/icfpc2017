@@ -138,7 +138,7 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
-	if state.settings.options {
+	if state.settings.options.unwrap_or(false) {
 		let mut uf = UnionFind::new(n);
 		for u in 0..n {
 			for &(v, e) in &state.graph[u] {
