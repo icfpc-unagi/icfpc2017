@@ -71,7 +71,6 @@ function WriteToServer($object) {
 
 function RunAi($command) {
   global $punter, $handshake;
-  Message('0;34', "Write to AI: " . json_encode($command) . "\n");
   if ($punter != '-') {
     $start_time = microtime(TRUE);
     $proc = proc_open($punter, [['pipe', 'r'], ['pipe', 'w']], $pipes);
@@ -86,10 +85,13 @@ function RunAi($command) {
       if (!isset($me['me'])) {
         Fatal('Handshake must contain me field: ' . $result);
       }
+      Message('0;32', "Handshake is done. AI name is '{$me['me']}'.");
       $json = json_encode(['you' => $me['me']]) . "\n";
+      Message('0;34', "Write to AI: " . strlen($json) . ":$json");
       fwrite($pipes[0], strlen($json) . ":$json");
     }
     $json = json_encode($command) . "\n";
+    Message('0;34', "Write to AI: " . strlen($json) . ":$json");
     fwrite($pipes[0], strlen($json) . ":$json");
     fflush($pipes[0]);
     fclose($pipes[0]);
@@ -110,7 +112,7 @@ function RunAi($command) {
     Fatal("AI must return a line formatted as 'bytes:json', but: '$input'");
   }
   Message('0;34', "Read from AI: " . rtrim($result[1]) . "\n");
-  if ($result[0] != '-' && intval($result[0]) == strlen($result[1])) {
+  if ($result[0] != '-' && intval($result[0]) != strlen($result[1])) {
     Error('Invalid JSON length from AI: ' . strlen($result[1]) .
           ' is expected, but ' . $result[0]);
   }
