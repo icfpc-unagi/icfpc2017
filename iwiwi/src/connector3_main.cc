@@ -220,6 +220,8 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
 
     cerr << json11::Json(futures_json).dump() << endl;
   } else {
+    cerr << in_json.dump() << endl;
+
     // Play
     MyState s = GetState<AIState>(in_json);
     pair<tuple<string, int, int>, AIState> res = play(s);
@@ -231,6 +233,8 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
           {"source", s.game.map.sites[get<1>(res.first)].id},
           {"target", s.game.map.sites[get<2>(res.first)].id}}},
       {"state", DumpState(s) }};
+
+    cerr << out_json.dump() << endl;
   }
 
   // Output
