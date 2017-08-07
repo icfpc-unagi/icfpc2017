@@ -10,7 +10,7 @@ pub fn setup(state: &mut State) {
 	eprintln!("shortest2");
 }
 
-fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, i: usize) -> (Vec<Vec<(usize, usize)>>, Vec<usize>) {
+fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, opt: &Vec<usize>, i: usize) -> (Vec<Vec<(usize, usize)>>, Vec<usize>) {
 	let n = graph.len();
 	let mut id = vec![!0; n];
 	let mut stack = vec![];
@@ -21,7 +21,7 @@ fn get_graph(graph: &Vec<Vec<(usize, usize)>>, user: &Vec<usize>, i: usize) -> (
 		stack.push(s);
 		while let Some(u) = stack.pop() {
 			for &(v, e) in &graph[u] {
-				if user[e] == i && id[v] == !0 {
+				if (user[e] == i || opt[e] == i) && id[v] == !0 {
 					id[v] = n2;
 					stack.push(v);
 				}
@@ -47,11 +47,13 @@ pub fn play(state: &mut State) -> usize {
 	let m = state.es.len();
 	let mut user = vec![!0; state.es.len()];
 	let mut opt = vec![!0; state.es.len()];
+	let mut opt_n = vec![0; state.p];
 	for &(q, e) in &state.moves {
 		if user[e] == !0 {
 			user[e] = q;
 		} else if opt[e] == !0 {
 			opt[e] = q;
+			opt_n[q] += 1;
 		}
 	}
 	let mut score = vec![0.0; m];
@@ -59,7 +61,7 @@ pub fn play(state: &mut State) -> usize {
 		if user[e] != !0 { score[e] = -1.0 }
 	}
 	for q in 0..state.p {
-		let (g, id) = get_graph(&state.graph, &user, q);
+		let (g, id) = get_graph(&state.graph, &user, &opt, q);
 		let n = g.len();
 		for (i, &s_) in state.mines.iter().enumerate() {
 			let s = id[s_];
@@ -113,7 +115,7 @@ pub fn play(state: &mut State) -> usize {
 		stack.push(s);
 		while let Some(u) = stack.pop() {
 			for &(v, e) in &state.graph[u] {
-				if user[e] == state.my && connected[v] == !0 {
+				if (user[e] == state.my || opt[e] == state.my) && connected[v] == !0 {
 					connected[v] = s;
 					stack.push(v);
 				}
@@ -135,12 +137,48 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
+	let mut uf = UnionFind::new(n);
+	for u in 0..n {
+		for &(v, e) in &state.graph[u] {
+			if user[e] == state.my {
+				uf.unite(u, v);
+			}
+		}
+	}
+	let mut score_opt = vec![0; state.es.len()];
+	for e in 0..state.es.len() {
+		if opt[e] != !0 { score_opt[e] = -1; }
+	}
+	for i in 0..state.mines.len() {
+		let mut total = vec![0; n];
+		for v in 0..n {
+			total[uf.find(v)] += (dist[i][v] * dist[i][v]) as i64;
+		}
+		for e in 0..state.es.len() {
+			let (u, v) = state.es[e];
+			if user[e] == !0 || opt[e] != !0 || uf.same(u, v) { continue }
+			if uf.same(state.mines[i], u) {
+				score_opt[e] += total[v];
+			}
+			if uf.same(state.mines[i], v) {
+				score_opt[e] += total[u];
+			}
+		}
+	}
 	let mut e = 0;
 	for i in 0..m {
 		if score[e] < score[i] {
 			e = i;
 		}
 	}
-	debug!(score[e]);
+	let mut e2 = 0;
+	for i in 0..m {
+		if score_opt[e2] < score_opt[i] {
+			e2 = i;
+		}
+	}
+	if opt_n[state.my] < state.mines.len() && score[e] < score_opt[e2] as f64 {
+		e = e2;
+	}
 	e
 }

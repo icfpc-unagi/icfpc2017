@@ -24,8 +24,13 @@ struct Input {
 	settings: Option<Settings>,
 	#[serde(rename="move")]
 	move_: Option<Moves>,
-	state: Option<State>,
+	state: Option<State_>,
 	you: Option<String>
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+struct State_ {
+	state: Option<State>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -81,13 +86,14 @@ struct Splurge {
 #[derive(Serialize, Deserialize, Debug)]
 struct Ready {
 	ready: usize,
-	state: State
+	state: State_
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Play {
-	claim: Claim,
-	state: State
+	claim: Option<Claim>,
+	option: Option<Claim>,
+	state: State_
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -143,13 +149,13 @@ fn setup(input: Input, ai: &str) -> Ready {
 	let mut state = State { p, my, turn: my, es, graph, mines, moves: vec![], names, settings: input.settings.unwrap_or(Default::default()), ai: Default::default() };
 	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases, shortest3, twophases2);
 	// ai!(ai, state, setup; twophases);
-	Ready { ready: my, state }
+	Ready { ready: my, state: State_ { state: Some(state) } }
 }
 
 fn play(input: Input, ai: &str) -> Play {
 	let moves = input.move_.unwrap().moves;
 	let p = moves.len();
-	let mut state = input.state.unwrap();
+	let mut state = input.state.unwrap().state.unwrap();
 	for i in 0..state.p {
 		let q = (state.my + i) % state.p;
 		if moves[q].claim.is_some() {
@@ -175,11 +181,15 @@ fn play(input: Input, ai: &str) -> Play {
 		}
 	}
 	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases, shortest3, twophases2);
-	// let e = ai!(ai, state, play; twophases);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.turn += state.p;
-	eprintln!("{}: {} {}", state.my, claim.source, claim.target);
-	Play { claim, state }
+	if state.moves.iter().any(|&(_, e2)| e == e2) {
+		eprintln!("{}: {} {} (option)", state.my, claim.source, claim.target);
+		Play { claim: None, option: Some(claim), state: State_ { state: Some(state) } }
+	} else {
+		eprintln!("{}: {} {}", state.my, claim.source, claim.target);
+		Play { claim: Some(claim), option: None, state: State_ { state: Some(state) } }
+	}
 }
 
 fn read(n: usize) -> Vec<u8> {
