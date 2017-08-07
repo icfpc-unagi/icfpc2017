@@ -36,19 +36,6 @@ foreach (Database::Select($sql) as $battle) {
   $battles[$battle['battle_id']] = $battle;
 }
 
-if (count($battles) == 0) {
-  echo 'No battles.';
-  exit();
-}
-
-$punters = Database::Select('
-    SELECT * FROM punter NATURAL JOIN ai
-    WHERE battle_id IN (' . implode(', ', array_keys($battles)) . ')');
-foreach ($punters as $punter) {
-  $battles[$punter['battle_id']]['punters'][] = $punter;
-}
-
-echo '<h2>最新バトル一覧</h2>';
 echo '<form action="?" method="GET">';
 echo '表示順序 <select class="form-control" name="is_queue">';
 echo '<option value=""' . (!$is_queue ? ' selected' : '') . '>処理順</option>';
@@ -73,8 +60,20 @@ echo '<br><input class="form-control" type="submit" value="検索">';
 
 echo '<div class="container">';
 
-foreach ($battles as $battle) {
-  ShowBattle($battle);
+echo '<h2>最新バトル一覧</h2>';
+if (count($battles) == 0) {
+  echo '該当するバトルがありません。';
+} else {
+  $punters = Database::Select('
+      SELECT * FROM punter NATURAL JOIN ai
+      WHERE battle_id IN (' . implode(', ', array_keys($battles)) . ')');
+  foreach ($punters as $punter) {
+    $battles[$punter['battle_id']]['punters'][] = $punter;
+  }
+
+  foreach ($battles as $battle) {
+    ShowBattle($battle);
+  }
 }
 
 echo '</div>';
