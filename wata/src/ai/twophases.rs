@@ -112,8 +112,8 @@ pub fn play(state: &mut State) -> usize {
 		if r >= sorted.len() || (sorted[r].0).0 < 0.0 { break }
 		let e = sorted[r].1;
 		let mut score = 0.0;
-		user[e] = state.my;
-		for q in 0..state.p {
+		for q in 0..2 {
+			user[e] = if q == 0 { state.my } else { !1 };
 			let (g, id) = get_graph(&state.graph, &user, q);
 			let g: Vec<Vec<_>> = g.into_iter().map(|v| v.into_iter().map(|(w, _)| w).collect()).collect();
 			let n = g.len();
@@ -128,16 +128,16 @@ pub fn play(state: &mut State) -> usize {
 				let ds = ::lib::bfs(&g, s);
 				for v in 0..id.len() {
 					if ds[id[v]] <= n {
-						if q == state.my {
+						if q == 0 {
 							score += (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64);
 						} else {
-							score -= (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64) / (state.p - 1) as f64;
+							score -= (dist[i][v] * dist[i][v]) as f64 * 0.9f64.powf(ds[id[v]] as f64);
 						}
 					}
 				}
 			}
+			user[e] = !0;
 		}
-		user[e] = !0;
 		if maxscore.setmax(score) {
 			ret = e;
 		}
