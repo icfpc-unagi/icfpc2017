@@ -175,10 +175,12 @@ class Game {
       CHECK(err.empty()) << "parse error: " << err;
       CHECK(!me.is_null());
       string you = Json(Json::object{{"you", me}}).dump();
-      GetResponseOrDie(StreamUtil::Write(id, StrCat(you.size(), ":", you)));
+      GetResponseOrDie(
+          StreamUtil::Write(id, StrCat(you.size() + 1 /*newline*/, ":", you)));
     }
     string send = in.dump();
-    GetResponseOrDie(StreamUtil::Write(id, StrCat(send.size(), ":", send)));
+    GetResponseOrDie(
+        StreamUtil::Write(id, StrCat(send.size() + 1 /*newline*/, ":", send)));
     Json out;
     do {
       auto t1 = std::chrono::high_resolution_clock::now();
@@ -316,7 +318,7 @@ class Game {
             prior_passes_[p] -= route.size() - 2;
             last_moves_[p] = Json::object{{"splurge", got["splurge"]}};
           }
-	  rest_options_[p] -= options;
+          rest_options_[p] -= options;
         }
       }
     } else if (FLAGS_options && !got["option"].is_null()) {
@@ -355,8 +357,7 @@ class Game {
       }
     } else if (!got["pass"].is_null()) {
       prior_passes_[p]++;
-      last_moves_[p] =
-          Json::object{{"pass", Json::object{{"punter", p}}}};
+      last_moves_[p] = Json::object{{"pass", Json::object{{"punter", p}}}};
     } else {
       LOG(ERROR) << ais_[p] << ": couldn't recognize move: " << got.dump();
       error = "invalid move";
