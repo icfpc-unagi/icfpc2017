@@ -10,6 +10,7 @@ import qualified AI.Splurand
 import qualified AI.Splurand2
 import qualified AI.OpSpRand
 import qualified AI.Greedy
+import qualified AI.Pass
 
 import Offline (offline)
 
@@ -39,7 +40,8 @@ run (Args aiStr) = do
       ("splurand", offline AI.Splurand.ai),
       ("splurand2", offline AI.Splurand2.ai), -- pass ha tamerarenakatta.
       ("opsprand", offline AI.OpSpRand.ai),
-      ("greedy", offline AI.Greedy.ai)
+      ("greedy", offline AI.Greedy.ai),
+      ("pass", offline AI.Pass.ai)
       ]
   maybe (error $ "not found AI name: " ++ aiStr) id ai
 
