@@ -141,7 +141,7 @@ fn setup(input: Input, ai: &str) -> Ready {
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
 	let mut state = State { p, my, turn: my, es, graph, mines, moves: vec![], names, settings: input.settings.unwrap_or(Default::default()), ai: Default::default() };
-	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases, shortest3);
+	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases, shortest3, twophases2);
 	// ai!(ai, state, setup; twophases);
 	Ready { ready: my, state }
 }
@@ -174,7 +174,7 @@ fn play(input: Input, ai: &str) -> Play {
 			state.moves.push((q, state.graph[u][e].1));
 		}
 	}
-	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases, shortest3);
+	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2, twophases, shortest3, twophases2);
 	// let e = ai!(ai, state, play; twophases);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.turn += state.p;
