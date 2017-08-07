@@ -53,9 +53,9 @@ struct River {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Settings {
-	futures: bool,
-	splurges: bool,
-	options: bool
+	futures: Option<bool>,
+	splurges: Option<bool>,
+	options: Option<bool>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
