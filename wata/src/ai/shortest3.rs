@@ -137,13 +137,48 @@ pub fn play(state: &mut State) -> usize {
 			}
 		}
 	}
-	
+	let mut uf = UnionFind::new(n);
+	for u in 0..n {
+		for &(v, e) in &state.graph[u] {
+			if user[e] == state.my {
+				uf.unite(u, v);
+			}
+		}
+	}
+	let mut score_opt = vec![0; state.es.len()];
+	for e in 0..state.es.len() {
+		if opt[e] != !0 { score_opt[e] = -1; }
+	}
+	for i in 0..state.mines.len() {
+		let mut total = vec![0; n];
+		for v in 0..n {
+			total[uf.find(v)] += (dist[i][v] * dist[i][v]) as i64;
+		}
+		for e in 0..state.es.len() {
+			let (u, v) = state.es[e];
+			if user[e] == !0 || opt[e] != !0 || uf.same(u, v) { continue }
+			if uf.same(state.mines[i], u) {
+				score_opt[e] += total[v];
+			}
+			if uf.same(state.mines[i], v) {
+				score_opt[e] += total[u];
+			}
+		}
+	}
 	let mut e = 0;
 	for i in 0..m {
 		if score[e] < score[i] {
 			e = i;
 		}
 	}
-	debug!(score[e]);
+	let mut e2 = 0;
+	for i in 0..m {
+		if score_opt[e2] < score_opt[i] {
+			e2 = i;
+		}
+	}
+	if opt_n[state.my] < state.mines.len() && score[e] < score_opt[e2] as f64 {
+		e = e2;
+	}
 	e
 }
