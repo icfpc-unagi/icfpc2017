@@ -212,12 +212,14 @@ class Game {
   }
 
   static Json setup_json(int p, int total, Json map_json) {
+    Json::object settings;
+    if (FLAGS_futures) settings["futures"] = true;
+    if (FLAGS_splurges) settings["splurges"] = true;
+    if (FLAGS_options) settings["options"] = true;
     return Json::object{{"punter", p},
                         {"punters", total},
                         {"map", map_json},
-                        {"settings", Json::object{{"futures", FLAGS_futures},
-                                                  {"splurges", FLAGS_splurges},
-                                                  {"options", FLAGS_options}}}};
+                        {"settings", settings}};
   }
 
   void setup(int p) {
