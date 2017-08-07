@@ -303,7 +303,7 @@ class Game {
           if (rest_options_[p] < options) {
             LOG(ERROR) << ais_[p] << ": splurged " << options
                        << " options but had " << rest_options_[p]
-                       << "remaining:" << splurge.dump();
+                       << " remaining:" << splurge.dump();
             error = "options lacking";
           } else if (error.empty()) {
             for (int ri : rs) rivers_[ri] = 1;
