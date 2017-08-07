@@ -129,6 +129,8 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
     rep (iter, 2) {
       // iter == 0 -> normal edges
       // iter == 1 -> option edges
+      cerr << "--------------------------------------------------------" << endl;
+      cerr << "Iter: " << iter << endl;
 
       game = state.game;
       G = ConstructGraph(game);
@@ -140,6 +142,7 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
       T = uf.root[T];
 
       auto dst2 = SSSP(H, S);
+      cerr << "Distance: " << dst2[T].first << endl;
       if (dst2[T].second == -1) continue;
       if (dst2[T].first == 0) {
         cerr << "S U C C E S S !!!" << endl;
@@ -162,7 +165,7 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
         es.emplace_back(a, b);
       }
       agl::cut_tree_internal::dinitz dnz(agl::G(es, N));
-      cerr << "Cut: " << dnz.max_flow(S, T) << ", Distance: " << shortest_path.size() << endl;
+      cerr << "Cut: " << dnz.max_flow(S, T) << endl;
       vector<pair<int, int>> cut_es = dnz.cut(S);
       for (auto &e : cut_es) if (e.first > e.second) swap(e.first, e.second);
       set<pair<int, int>> se(all(cut_es));
@@ -173,7 +176,6 @@ pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
         if (u > v) swap(u, v);
         if (se.count(make_pair(u, v))) {
           auto ans = FindOriginalEdge(u, v, uf, G);
-
 
           if (iter == 0) return mp(make_tuple("claim",  ans.first, ans.second), state.ai);
           else           return mp(make_tuple("option", ans.first, ans.second), state.ai);
