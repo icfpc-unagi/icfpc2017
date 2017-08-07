@@ -23,6 +23,7 @@ if (!$fp) {
 Message('0;32', "Connected.");
 $punter = getenv('PUNTER') ?: Fatal('PUNTER must be specified,');
 $handshake = boolval(getenv('PUNTER_HANDSHAKE'));
+$newline = boolval(getenv('PUNTER_NEWLINE'));
 
 function Command($command) {
   fwrite(STDOUT, rtrim($command, "\r\n") . "\n");
@@ -70,7 +71,7 @@ function WriteToServer($object) {
 }
 
 function RunAi($command) {
-  global $punter, $handshake;
+  global $punter, $handshake, $newline;
   if ($punter != '-') {
     $start_time = microtime(TRUE);
     $proc = proc_open($punter, [['pipe', 'r'], ['pipe', 'w']], $pipes);
@@ -86,11 +87,11 @@ function RunAi($command) {
         Fatal('Handshake must contain me field: ' . $result);
       }
       Message('0;32', "Handshake is done. AI name is '{$me['me']}'.");
-      $json = json_encode(['you' => $me['me']]) . "\n";
+      $json = json_encode(['you' => $me['me']]) . ($newline ? "\n" : '');
       Message('0;34', "Write to AI: " . strlen($json) . ":$json");
       fwrite($pipes[0], strlen($json) . ":$json");
     }
-    $json = json_encode($command) . "\n";
+    $json = json_encode($command) . ($newline ? "\n" : '');
     Message('0;34', "Write to AI: " . strlen($json) . ":$json");
     fwrite($pipes[0], strlen($json) . ":$json");
     fflush($pipes[0]);
