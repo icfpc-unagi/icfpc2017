@@ -114,7 +114,7 @@ pub fn play(state: &mut State) -> usize {
 		let mut score = 0.0;
 		for q in 0..2 {
 			user[e] = if q == 0 { state.my } else { !1 };
-			let (g, id) = get_graph(&state.graph, &user, q);
+			let (g, id) = get_graph(&state.graph, &user, state.my);
 			let g: Vec<Vec<_>> = g.into_iter().map(|v| v.into_iter().map(|(w, _)| w).collect()).collect();
 			let n = g.len();
 			for (i, &s_) in state.mines.iter().enumerate() {
