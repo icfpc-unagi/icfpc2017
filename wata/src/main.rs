@@ -23,7 +23,8 @@ struct Input {
 	map: Option<Map>,
 	#[serde(rename="move")]
 	move_: Option<Moves>,
-	state: Option<State>
+	state: Option<State>,
+	you: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -122,7 +123,7 @@ fn setup(input: Input, ai: &str) -> Ready {
 	let p = input.punters.unwrap();
 	let my = input.punter.unwrap();
 	let mut state = State { p, my, es, graph, mines, moves: vec![], names, ai: Default::default() };
-	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2);
+	ai!(ai, state, setup; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2);
 	Ready { ready: my, state }
 }
 
@@ -148,28 +149,56 @@ fn play(input: Input, ai: &str) -> Play {
 			state.moves.push(last[(state.my + i) % state.p]);
 		}
 	}
-	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected, connected2);
+	let e = ai!(ai, state, play; greedy, randw, obst, lightning, shortest, weighted, connected, connected2, selfish, shortest2);
 	let claim = Claim { punter: state.my, source: state.names[state.es[e].0], target: state.names[state.es[e].1] };
 	state.moves.push(Some(e));
 	eprintln!("{}: {} {}", state.my, claim.source, claim.target);
 	Play { claim, state }
 }
 
-fn main() {
-	*STIME() = ::std::time::SystemTime::now();
+fn read(n: usize) -> Vec<u8> {
 	use std::io::Read;
-	let mut input = String::new();
-	// TODO: n:
-	std::io::stdin().read_line(&mut input).unwrap();
-	let p = input.find(':').unwrap() + 1;
-	input = input[p..].to_owned();
-	let input: Input = serde_json::from_str(&input).unwrap();
+	let mut a = vec![0; n];
+	let mut stdin = std::io::stdin();
+	stdin.lock().read_exact(&mut a).unwrap();
+	a
+}
+
+fn read_n() -> usize {
+	use std::io::Read;
+	let mut n = String::new();
+	loop {
+		let a = read(1);
+		if a[0] == b':' { break }
+		n += &String::from_utf8(a).unwrap();
+	}
+	n.trim().parse().unwrap()
+}
+
+fn read_next() -> String {
+	let n = read_n();
+	let input = String::from_utf8(read(n)).unwrap();
+	let input = input.trim();
+	input.to_owned()
+}
+
+fn send(s: &str) {
+	println!("{}:{}", s.len(), s);
+}
+
+fn main() {
+	send("{\"me\" : \"unagi\"}");
+	let mut input: Input = serde_json::from_str(&read_next()).unwrap();
+	*STIME() = ::std::time::SystemTime::now();
+	if input.you.is_some() {
+		input = serde_json::from_str(&read_next()).unwrap();
+	}
 	if input.map.is_some() {
 		let out = serde_json::to_string(&setup(input, &std::env::args().nth(1).unwrap_or(DEFAULT_AI.to_owned()))).unwrap();
-		println!("{}:{}", out.len(), out);
+		send(&out);
 	} else if input.move_.is_some() {
 		let out = serde_json::to_string(&play(input, &std::env::args().nth(1).unwrap_or(DEFAULT_AI.to_owned()))).unwrap();
-		println!("{}:{}", out.len(), out);
+		send(&out);
 	} else {
 		panic!("Invalid input: {:?}", input);
 	}

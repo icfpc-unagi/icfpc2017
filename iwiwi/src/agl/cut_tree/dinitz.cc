@@ -68,5 +68,27 @@ int dinitz::max_flow(int s, int t) {
   }
 }
 
+void dinitz::dfs2(int v, vector<bool> &vis) {
+  if (vis[v]) return;
+  vis[v] = true;
+  for (const auto &e : edges(v)) {
+    if (e.cap_ == 0) continue;
+    dfs2(e.to_, vis);
+  }
+}
+
+vector<pair<int, int>> dinitz::cut(int s) {
+  vector<bool> vis(g.num_vertices());
+  dfs2(s, vis);
+
+  vector<pair<int, int>> es;
+  for (int v = 0; v < g.num_vertices(); ++v) {
+    for (const auto &e : edges(v)) {
+      if (vis[v] && !vis[e.to_]) es.emplace_back(v, e.to_);
+    }
+  }
+  return es;
+}
+
 } //namespace cut_tree_internal
 } //namespace agl

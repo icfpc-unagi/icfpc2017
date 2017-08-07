@@ -13,3 +13,7 @@ pub mod weighted;
 pub mod connected;
 
 pub mod connected2;
+
+pub mod selfish;
+
+pub mod shortest2;

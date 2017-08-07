@@ -88,24 +88,25 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
       vector<pair<int, int>> dst1 = SSSP(G, s);
       // rep (v, N) if (v != s) cerr << ct.query(s, v) << " ";
 
-      rep (j, i) {
-        int t = game.map.mines[j];
-        ord.emplace_back(dst1[t].first, ct.query(s, t), s, t);
+      rep (v, N) {
+        if (game.map.sites[v].is_mine) continue;
+        if (dst1[v].first == INT_MAX) continue;
+        ord.emplace_back(dst1[v].first, ct.query(s, v), s, v);
       }
     }
 
     sort(all(ord));
     reverse(all(ord));
+    const int kNumTopEntries = 30;
 
-    rep (i, 10) {
+    rep (i, kNumTopEntries) {
       auto o = ord[i];
       cerr << get<0>(o) << " " << get<1>(o) << " " << get<2>(o) << "-" << get<3>(o) << endl;
     }
 
     int max_connectivity = 0;
-    const int TopK = 1;
-    rep (i, TopK) max_connectivity = max(max_connectivity, get<1>(ord[i]));
-    rep (i, TopK) {
+    rep (i, kNumTopEntries) max_connectivity = max(max_connectivity, get<1>(ord[i]));
+    rep (i, kNumTopEntries) {
       if (get<1>(ord[i]) == max_connectivity) {
         cerr << ord[i] << endl;
         int s = get<2>(ord[i]), t = get<3>(ord[i]);
@@ -113,7 +114,7 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
         // agl::cut_tree_internal::dinitz din(aglg);
         // cerr << din.max_flow(s, t) << endl;
 
-        return make_pair(MyAIState{s, t}, vector<pair<int, int>>{{s, t}, {t, s}});
+        return make_pair(MyAIState{s, t}, vector<pair<int, int>>{{s, t}});
       }
     }
   }
@@ -141,44 +142,37 @@ pair<pair<int, int>, MyAIState> Play(const MyState &state) {
       return make_pair(Greedy(state.game), state.ai);
     }
 
+    // Shortest path
     vector<int> shortest_path;
     for (int v = T; v != S; v = dst2[v].second) shortest_path.emplace_back(v);
     shortest_path.emplace_back(S);
     reverse(all(shortest_path));
 
-    tuple<int, int, int> bst(-1, -1, -1);
-    for (int i = 0; i + 1 < (int)shortest_path.size(); ++i) {
-      UnionFind uf2 = uf;
-      uf2.Merge(shortest_path[i], shortest_path[i + 1]);
-
-      // map<pair<int, int>, int> es;
-      vector<pair<int, int>> es;
-      rep (v, N) for (const auto &e: G[v]) {
-        if (e.owner == -1) {
-          int a = uf2.root[v];
-          int b = uf2.root[e.to];
-          if (a >= b) continue;
-          // es[mp(min(a, b), max(a, b))] += 1;
-          es.emplace_back(a, b);
-        }
-      }
-
-      int s = uf2.root[S], t = uf2.root[T], f;
-      if (s == t) {
-        f = INT_MAX;
-      } else {
-        agl::bi_dinitz bdz(es, N);
-        f = bdz.max_flow(uf2.root[S], uf2.root[T]);
-        cerr << f << " ";
-      }
-      bst = max(bst, make_tuple(f, shortest_path[i], shortest_path[i + 1]));
+    // Dinitz
+    vector<pair<int, int>> es;
+    rep (v, N) for (const auto &e: G[v]) {
+      if (e.owner != -1) continue;
+      int a = uf.root[v];
+      int b = uf.root[e.to];
+      if (a >= b) continue;
+      es.emplace_back(a, b);
     }
-    cerr << endl;
+    agl::cut_tree_internal::dinitz dnz(agl::G(es, N));
+    cerr << "Cut: " << dnz.max_flow(S, T) << ", Distance: " << shortest_path.size() << endl;
+    vector<pair<int, int>> cut_es = dnz.cut(S);
+    for (auto &e : cut_es) if (e.first > e.second) swap(e.first, e.second);
+    set<pair<int, int>> se(all(cut_es));
 
-    auto ans = FindOriginalEdge(get<1>(bst), get<2>(bst), uf, G);
-    return make_pair(ans, state.ai);
+    // Find cut edge
+    for (int i = 0; i + 1 < (int)shortest_path.size(); ++i) {
+      int u = shortest_path[i], v = shortest_path[i + 1];
+      if (u > v) swap(u, v);
+      if (se.count(make_pair(u, v))) {
+        auto ans = FindOriginalEdge(u, v, uf, G);
+        return make_pair(ans, state.ai);
+      }
+    }
   }
-
   assert(false);
 }
 }  // namespace

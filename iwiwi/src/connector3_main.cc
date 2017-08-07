@@ -88,24 +88,25 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
       vector<pair<int, int>> dst1 = SSSP(G, s);
       // rep (v, N) if (v != s) cerr << ct.query(s, v) << " ";
 
-      rep (j, i) {
-        int t = game.map.mines[j];
-        ord.emplace_back(dst1[t].first, ct.query(s, t), s, t);
+      rep (v, N) {
+        if (game.map.sites[v].is_mine) continue;
+        if (dst1[v].first == INT_MAX) continue;
+        ord.emplace_back(dst1[v].first, ct.query(s, v), s, v);
       }
     }
 
     sort(all(ord));
     reverse(all(ord));
+    const int kNumTopEntries = 30;
 
-    rep (i, 10) {
+    rep (i, kNumTopEntries) {
       auto o = ord[i];
       cerr << get<0>(o) << " " << get<1>(o) << " " << get<2>(o) << "-" << get<3>(o) << endl;
     }
 
     int max_connectivity = 0;
-    const int TopK = 1;
-    rep (i, TopK) max_connectivity = max(max_connectivity, get<1>(ord[i]));
-    rep (i, TopK) {
+    rep (i, kNumTopEntries) max_connectivity = max(max_connectivity, get<1>(ord[i]));
+    rep (i, kNumTopEntries) {
       if (get<1>(ord[i]) == max_connectivity) {
         cerr << ord[i] << endl;
         int s = get<2>(ord[i]), t = get<3>(ord[i]);
@@ -113,7 +114,7 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
         // agl::cut_tree_internal::dinitz din(aglg);
         // cerr << din.max_flow(s, t) << endl;
 
-        return make_pair(MyAIState{s, t}, vector<pair<int, int>>{{s, t}, {t, s}});
+        return make_pair(MyAIState{s, t}, vector<pair<int, int>>{{s, t}});
       }
     }
   }
@@ -121,65 +122,73 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
   assert(false);
 }
 
-pair<pair<int, int>, MyAIState> Play(const MyState &state) {
+pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
   // return make_pair(Greedy(state.game), state.ai);
 
   JLOG_PUT_BENCHMARK("time") {
-    game = state.game;
-    G = ConstructGraph(game);
-    N = G.size();
-    tie(H, uf) = ConstructContractedGraph(G, game.rank);
+    rep (iter, 2) {
+      bool allow_option = iter;
+      // iter == 0 -> normal edges
+      // iter == 1 -> option edges
+      cerr << "--------------------------------------------------------" << endl;
+      cerr << "Iter: " << iter << endl;
 
-    int S = state.ai.u, T = state.ai.v;
-    S = uf.root[S];
-    T = uf.root[T];
+      game = state.game;
+      G = ConstructGraph(game);
+      N = G.size();
+      tie(H, uf) = ConstructContractedGraph(G, game.rank, iter == 1 /* allow option? */);
 
-    auto dst2 = SSSP(H, S);
-    if (dst2[T].second == -1 || dst2[T].first == 0) {
-      if (dst2[T].second == -1) cerr << "M O U D A M E P O !!!" << endl;
-      else cerr << "S U C C E S S !!!" << endl;
-      return make_pair(Greedy(state.game), state.ai);
-    }
+      int S = state.ai.u, T = state.ai.v;
+      S = uf.root[S];
+      T = uf.root[T];
 
-    vector<int> shortest_path;
-    for (int v = T; v != S; v = dst2[v].second) shortest_path.emplace_back(v);
-    shortest_path.emplace_back(S);
-    reverse(all(shortest_path));
+      auto dst2 = SSSP(H, S);
+      cerr << "Distance: " << dst2[T].first << endl;
+      if (dst2[T].second == -1) continue;
+      if (dst2[T].first == 0) {
+        cerr << "S U C C E S S !!!" << endl;
+        break;
+      }
 
-    tuple<int, int, int> bst(-1, -1, -1);
-    for (int i = 0; i + 1 < (int)shortest_path.size(); ++i) {
-      UnionFind uf2 = uf;
-      uf2.Merge(shortest_path[i], shortest_path[i + 1]);
+      // Shortest path
+      vector<int> shortest_path;
+      for (int v = T; v != S; v = dst2[v].second) shortest_path.emplace_back(v);
+      shortest_path.emplace_back(S);
+      reverse(all(shortest_path));
 
-      // map<pair<int, int>, int> es;
+      // Dinitz
       vector<pair<int, int>> es;
       rep (v, N) for (const auto &e: G[v]) {
-        if (e.owner == -1) {
-          int a = uf2.root[v];
-          int b = uf2.root[e.to];
+        if (e.owner == -1 || (allow_option && e.owner2 == -1)) {
+          int a = uf.root[v];
+          int b = uf.root[e.to];
           if (a >= b) continue;
-          // es[mp(min(a, b), max(a, b))] += 1;
           es.emplace_back(a, b);
         }
       }
+      agl::cut_tree_internal::dinitz dnz(agl::G(es, N));
+      cerr << "Cut: " << dnz.max_flow(S, T) << endl;
+      vector<pair<int, int>> cut_es = dnz.cut(S);
+      for (auto &e : cut_es) if (e.first > e.second) swap(e.first, e.second);
+      set<pair<int, int>> se(all(cut_es));
 
-      int s = uf2.root[S], t = uf2.root[T], f;
-      if (s == t) {
-        f = INT_MAX;
-      } else {
-        agl::bi_dinitz bdz(es, N);
-        f = bdz.max_flow(uf2.root[S], uf2.root[T]);
-        cerr << f << " ";
+      // Find cut edge
+      for (int i = 0; i + 1 < (int)shortest_path.size(); ++i) {
+        int u = shortest_path[i], v = shortest_path[i + 1];
+        if (u > v) swap(u, v);
+        if (se.count(make_pair(u, v))) {
+          auto ans = FindOriginalEdge(u, v, uf, G);
+
+          if (iter == 0) return mp(make_tuple("claim",  ans.first, ans.second), state.ai);
+          else           return mp(make_tuple("option", ans.first, ans.second), state.ai);
+        }
       }
-      bst = max(bst, make_tuple(f, shortest_path[i], shortest_path[i + 1]));
     }
-    cerr << endl;
-
-    auto ans = FindOriginalEdge(get<1>(bst), get<2>(bst), uf, G);
-    return make_pair(ans, state.ai);
   }
 
-  assert(false);
+  cerr << "MODUAMEPO!! " << endl;
+  auto ans = Greedy(state.game);
+  return mp(make_tuple("claim", ans.first, ans.second), state.ai);
 }
 }  // namespace
 
@@ -211,17 +220,21 @@ void RunWithFutures(SetupFunc setup, PlayFunc play) {
 
     cerr << json11::Json(futures_json).dump() << endl;
   } else {
+    cerr << in_json["move"].dump() << endl;
+
     // Play
     MyState s = GetState<AIState>(in_json);
-    pair<pair<int, int>, AIState> res = play(s);
+    pair<tuple<string, int, int>, AIState> res = play(s);
     s.ai = res.second;
 
     out_json = json11::Json::object{
-      {"claim", json11::Json::object{
+      {get<0>(res.first) /* claim or option */, json11::Json::object{
           {"punter", s.game.rank},
-          {"source", s.game.map.sites[res.first.first].id},
-          {"target", s.game.map.sites[res.first.second].id}}},
+          {"source", s.game.map.sites[get<1>(res.first)].id},
+          {"target", s.game.map.sites[get<2>(res.first)].id}}},
       {"state", DumpState(s) }};
+
+    // cerr << out_json.dump() << endl;
   }
 
   // Output
