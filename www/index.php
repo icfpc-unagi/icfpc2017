@@ -76,10 +76,13 @@ foreach ($battles as $battle) {
   $punters = [];
   foreach ($battle['punters'] as $punter_index => $punter) {
     $punter['punter_index'] = $punter_index;
-    $punters[sprintf('%08d', $punter['punter_score']) .
-             $punter_index] = $punter;
+    $punters[] = $punter;
   }
-  krsort($punters);
+  usort($punters, function($lhs, $rhs) {
+    if ($lhs['punter_score'] > $rhs['punter_score']) return -1;
+    if ($lhs['punter_score'] < $rhs['punter_score']) return 1;
+    return 0;
+  });
   foreach (array_values($punters) as $punter_rank => $punter) {
     $punter['punter_rank'] = $punter_rank;
     $records[$battle['map_id']][$punter['ai_id']][] = $punter;
