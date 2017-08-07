@@ -12,14 +12,17 @@ import qualified AI.OpSpRand
 import qualified AI.Greedy
 import qualified AI.Pass
 
+import Handshake (handshake)
 import Offline (offline)
 
 data Args = Args {
-  aiStr :: String
+  aiStr :: String,
+  name :: String
   }
 
 args = Args 
   <$> strOption (long "ai" <> short 'a' <> metavar "AI")
+  <*> strOption (long "name" <> short 'n' <> metavar "NAME")
 
 main :: IO ()
 main = run =<< execParser opts
@@ -30,7 +33,7 @@ main = run =<< execParser opts
      <> header "" )
 
 run :: Args -> IO ()
-run (Args aiStr) = do
+run (Args aiStr name) = do
   let
     ai = lookup aiStr $ [
       ("rand1", offline AI.Rand1.randAI1),
@@ -43,5 +46,4 @@ run (Args aiStr) = do
       ("greedy", offline AI.Greedy.ai),
       ("pass", offline AI.Pass.ai)
       ]
-  maybe (error $ "not found AI name: " ++ aiStr) id ai
-
+  maybe (error $ "not found AI name: " ++ aiStr) (handshake name >>) ai
