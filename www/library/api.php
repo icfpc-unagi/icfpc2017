@@ -276,6 +276,9 @@ function ShowBattle($battle) {
   echo '<tr><td>マップ</td><td>' . $battle['map_key'] . "</td></tr>\n";
   echo '<tr><td>作成時刻</td><td>' . $battle['battle_created'] . "</td></tr>\n";
   echo '<tr><td>更新時刻</td><td>' . $battle['battle_modified'] . "</td></tr>\n";
+  if (isset($battle['battle_log_info']) && $battle['battle_log_info'] != '') {
+    echo '<tr><td>エラー</td><td><pre style="margin:0">' . htmlspecialchars($battle['battle_log_info']) . '</pre></td></tr>';
+  }
   echo '<tr><td>結果</td><td>';
   if (!isset($battle['punters'])) {
     echo 'Punter が存在しません';
