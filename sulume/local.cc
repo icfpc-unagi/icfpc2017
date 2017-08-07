@@ -166,16 +166,21 @@ class Game {
   }
 
  private:
+  static string strip_prefix(const string& str) {
+    size_t i = str.find(':');
+    CHECK_NE(i, string::npos) << "missing prefix: " << str;
+    uint32 n;
+    CHECK(SimpleAtoi(str.substr(0, i), &n)) << str;
+    return str.substr(i + 1);
+  }
+
   static Json io_once(const string& cmd, const Json& in, int timeout) {
     string id = GetResponseOrDie(StreamUtil::Run(1, cmd)).stream_ids[0];
     if (FLAGS_say_you) {
-      string recv = GetResponseOrDie(StreamUtil::Read(id, timeout)).data;
-      size_t i = recv.find(':');
-      CHECK_NE(i, string::npos) << "missing prefix: " << recv;
-      uint32 n;
-      CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
       string err;
-      Json me = Json::parse(recv.substr(i + 1), err)["me"];
+      Json me = Json::parse(
+          strip_prefix(GetResponseOrDie(StreamUtil::Read(id, timeout)).data),
+          err)["me"];
       CHECK(err.empty()) << "parse error: " << err;
       CHECK(!me.is_null());
       string you = Json(Json::object{{"you", me}}).dump();
@@ -196,15 +201,10 @@ class Game {
         LOG(WARNING) << cmd << ": Deadline exceeded";
         return Json::object{{"error", "deadline exceeded"}};
       }
-      LOG_IF(WARNING, ms > 1000)
+      LOG_IF(WARNING, ms >= 1000)
           << cmd << ": took " << ms << "ms; would exceed deadline!";
-      string recv = GetResponseOrDie(response).data;
-      size_t i = recv.find(':');
-      CHECK_NE(i, string::npos) << "missing prefix: " << recv;
-      uint32 n;
-      CHECK(SimpleAtoi(recv.substr(0, i), &n)) << recv;
       string err;
-      out = Json::parse(recv.substr(i + 1), err);
+      out = Json::parse(strip_prefix(GetResponseOrDie(response).data), err);
       CHECK(err.empty()) << "parse error: " << err;
     } while (!out["me"].is_null());
     GetResponseOrDie(StreamUtil::Kill(id));
@@ -224,6 +224,11 @@ class Game {
     // S → P {"punter" : p, "punters" : n, "map" : map}
     // P → S {"ready" : p, "state" : state}
     Json got = io_once(ais_[p], setup_json(p, ais_.size(), map_json_), 10000);
+    if (!got["error"].is_null()) {
+      LOG(WARNING) << ais_[p] << ": setup failed";
+      dead_ais_[p] = true;
+      return;
+    }
     CHECK_EQ(got["ready"].int_value(), p);
     states_[p] = got["state"];
     if (FLAGS_futures) {
