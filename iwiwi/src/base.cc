@@ -60,17 +60,21 @@ map<int, int> ConstructIdToIndexMap(const Map &s) {
 // IO
 //
 json11::Json InputJSON() {
-  std::string stdin;
-  std::getline(cin, stdin);
+  string head;
+  for (;;) {
+    char c = cin.get();
+    if (isdigit(c)) head += c;
+    else break;
+  }
 
-  // Remove 'n:' part
-  int i = 0;
-  while (isdigit(stdin[i])) ++i;
-  assert(stdin[i] == ':');
-  stdin = stdin.substr(i + 1);
+  int n_bytes = stoi(head);
+  vector<char> dat(n_bytes);
+  cin.read(dat.data(), n_bytes);
+  string str(dat.begin(), dat.end());
+  // cerr << str << endl;
 
   string err;
-  auto j = json11::Json::parse(stdin, err);
+  auto j = json11::Json::parse(str, err);
   if (!err.empty()) {
     cerr << "JSON Error: " << err << endl;
     assert(err.empty());
@@ -80,9 +84,9 @@ json11::Json InputJSON() {
 }
 
 void OutputJSON(const json11::Json &json) {
-  string str = json.dump();
+  string str = json.dump() + "\n";
   ostringstream os;
-  cout << str.length() << ":" << str << endl;
+  cout << str.length() << ":" << str;
 }
 
 bool IsSetup(const json11::Json &json) {

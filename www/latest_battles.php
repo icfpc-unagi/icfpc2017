@@ -24,7 +24,7 @@ if (!$is_queue) {
           HAVING SUM(CASE WHEN punter_score IS NULL THEN 1 ELSE 0 END) = 0
           ORDER BY battle_modified DESC LIMIT 100";
 } else {
-  $sql = "SELECT * FROM battle NATURAL JOIN map
+  $sql = "SELECT battle.*, map.*
           FROM battle NATURAL JOIN map NATURAL JOIN punter
           $where
           GROUP BY battle_id
