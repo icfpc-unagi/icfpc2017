@@ -22,7 +22,7 @@ data Args = Args {
 
 args = Args 
   <$> strOption (long "ai" <> short 'a' <> metavar "AI")
-  <*> strOption (long "name" <> short 'n' <> metavar "NAME")
+  <*> strOption (long "name" <> short 'n' <> metavar "NAME" <> value "pUntos")
 
 main :: IO ()
 main = run =<< execParser opts
