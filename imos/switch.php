@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 
 function Message($color, $message) {
