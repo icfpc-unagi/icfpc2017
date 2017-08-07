@@ -6,7 +6,10 @@ DEFINE_string dot '' 'dot'
 DEFINE_int scale 3 'scale'
 DEFINE_bool debug FALSE 'Debug'
 DEFINE_string listener '' 'listener command'
-DEFINE_bool say_you false '' 'handshake'
+DEFINE_bool say_you FALSE '' 'handshake'
+DEFINE_bool futures TRUE 'futures extension'
+DEFINE_bool splurges TRUE 'splurges extension'
+DEFINE_bool options TRUE 'options extension'
 IMOSH_PREDICATE=1 eval "${IMOSH_INIT}"
 
 args=''
@@ -27,4 +30,4 @@ else
 fi
 
 ./ninetan/ninestream "${flags[@]}" \
-    --master="./sulume/local --logtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} --listener=${FLAGS_listener} --say_you=${FLAGS_say_you} $args"
+    --master="./sulume/local --logtostderr --map=./map/${FLAGS_map}.json --dot=${FLAGS_dot} --scale=${FLAGS_scale} --listener=${FLAGS_listener} --say_you=${FLAGS_say_you} --futures=${FLAGS_futures} --splurges=${FLAGS_splurges} --options=${FLAGS_options} $args"

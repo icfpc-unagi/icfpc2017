@@ -6,30 +6,34 @@ $map = Database::SelectRow('
     SELECT map_id, map_capacity, RAND() / map_weight AS map_weight
     FROM map WHERE map_weight > 0 ORDER BY map_weight LIMIT 1');
 
-$ais = Database::Select('
-    SELECT ai_id, ai_key, ai_is_important, RAND() / ai_weight AS ai_weight
-    FROM (SELECT * FROM ai UNION ALL
-          SELECT * FROM ai UNION ALL
-          SELECT * FROM ai UNION ALL
-          SELECT * FROM ai UNION ALL
-          SELECT * FROM ai UNION ALL
-          SELECT * FROM ai UNION ALL
-          SELECT * FROM ai UNION ALL
-          SELECT * FROM ai) AS ai
-    WHERE ai_weight > 0
-    ORDER BY ai_weight LIMIT {limit}',
-    ['limit' => intval($map['map_capacity'])]);
-shuffle($ais);
+for ($retry = 0; $retry < 10; $retry++) {
+  $ais = Database::Select('
+      SELECT ai_id, ai_key, ai_is_important, RAND() / ai_weight AS ai_weight
+      FROM (SELECT * FROM ai UNION ALL
+            SELECT * FROM ai UNION ALL
+            SELECT * FROM ai UNION ALL
+            SELECT * FROM ai UNION ALL
+            SELECT * FROM ai UNION ALL
+            SELECT * FROM ai UNION ALL
+            SELECT * FROM ai UNION ALL
+            SELECT * FROM ai) AS ai
+      WHERE ai_weight > 0
+      ORDER BY ai_weight LIMIT {limit}',
+      ['limit' => intval($map['map_capacity'])]);
+  shuffle($ais);
 
-$punters = [];
-$ai_is_important = FALSE;
-foreach ($ais as $ai) {
-  $ai_is_important |= boolval($ai['ai_is_important']);
-  $punters[] = ['ai_id' => $ai['ai_id']];
+  $punters = [];
+  $ai_is_important = FALSE;
+  foreach ($ais as $ai) {
+    $ai_is_important |= boolval($ai['ai_is_important']);
+    $punters[] = ['ai_id' => $ai['ai_id']];
+  }
+
+  if ($ai_is_important) break;
 }
 
 if (!$ai_is_important) {
-  die(json_encode(['error' => 'No important AIs.']));;
+  die(json_encode(['error' => 'No important AIs for Map in ' . $map['map_capacity']]));;
 }
 
 Database::Command('
