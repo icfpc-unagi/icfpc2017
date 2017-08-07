@@ -4,7 +4,7 @@ $keep_alive = 0;
 
 function KeepAlive($interval = 10) {
   global $battle, $keep_alive;
-  if (time() + $interval * 0.5 < $keep_alive) {
+  if (time() + $interval * 0.3 < $keep_alive) {
     return;
   }
   $keep_alive = time() + $interval;
@@ -20,6 +20,7 @@ if (!isset($battle['battle_id'])) {
   file_get_contents('http://proxy.sx9.jp/api/add_random_battle.php');
   exit();
 }
+fwrite(STDERR, "Battle ID: {$battle['battle_id']}\n");
 
 $args = [];
 foreach ($battle['punter'] as $punter) {
@@ -34,6 +35,8 @@ $master = [
 foreach ($battle['punter'] as $punter) {
   $master[] = $punter['ai_command'] . ' 2>/dev/null';
 }
+
+$stderr_file = '/tmp/' . md5(microtime() . rand());
 
 $ninestream = [
     '/binary/ninestream',
@@ -57,19 +60,22 @@ function Post($url, $data) {
 }
 
 function GetScores($command) {
-  global $battle;
+  global $battle, $stderr_file;
   fwrite(STDERR, "Running command: $command\n");
-  KeepAlive(60);
+  KeepAlive(120);
   $handle = popen($command, 'r');
   $output = '';
   while (!feof($handle) && ($buffer = fread($handle, 1024)) !== FALSE) {
     $output .= $buffer;
-    KeepAlive(60);
+    echo $buffer;
+    KeepAlive(120);
   }
   pclose($handle);
   Post("http://proxy.sx9.jp/api/add_battle_log.php?" .
        "battle_id={$battle['battle_id']}",
-       ['battle_log_data' => $output]);
+       ['battle_log_data' => $output,
+        'battle_log_info' => gethostname() . "\n\n" . file_get_contents($stderr_file)]);
+  @unlink($stderr_file);
   foreach (explode("\n", $output) as $line) {
     $result = json_decode($line, TRUE);
     if (isset($result['scores'])) {
@@ -80,7 +86,7 @@ function GetScores($command) {
   exit(1);
 }
 
-$scores = GetScores(implode(' ', array_map('escapeshellarg', $ninestream)));
+$scores = GetScores(implode(' ', array_map('escapeshellarg', $ninestream)) . ' 2>' . $stderr_file);
 foreach ($scores['scores'] as $index => $score) {
   $punter = $battle['punter'][$index];
   $result = file_get_contents(
