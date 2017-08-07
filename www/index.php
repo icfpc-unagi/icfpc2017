@@ -11,7 +11,7 @@ echo '<h2>順位表</h2>';
 echo '<form action="?" method="GET">';
 echo '検索件数 <select class="form-control" name="limit">';
 foreach ([5000, 3000, 1000, 10000] as $limit) {
-  echo '<option value=""' . ($limit == $current_limit ? ' selected' : '') . ">最新 $limit 件</option>";
+  echo '<option value="' . $limit . '"' . ($limit == $current_limit ? ' selected' : '') . ">最新 $limit 件</option>";
 }
 echo '</select>';
 echo '拡張ルール <select class="form-control" name="extension">';
