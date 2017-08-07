@@ -123,7 +123,7 @@ pair<MyAIState, vector<pair<int, int>>> Setup(const GameState &game) {
   assert(false);
 }
 
-pair<tuple<string, int, int>, MyAIState> Play(const MyState &state) {
+pair<tuple<string, int, int>, MyAIState> Play(MyState &state) {
   // return make_pair(Greedy(state.game), state.ai);
 
   cerr << "Options used: " << state.ai.n_options << endl;
