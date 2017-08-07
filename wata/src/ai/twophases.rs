@@ -106,40 +106,15 @@ pub fn play(state: &mut State) -> usize {
 	}
 	let mut sorted: Vec<_> = score.iter().enumerate().map(|(e, &s)| (Rev(s), e)).collect();
 	sorted.sort();
-	let ret = sorted[0].1;
+	let mut ret = sorted[0].1;
+	let mut maxscore = 0.0;
 	for r in 0..10 {
+		let e = sorted[r].1;
+		let mut score = 0.0;
 		
+		if maxscore.setmax(score) {
+			ret = e;
+		}
 	}
-	
-	// let mut connected = vec![!0; n];
-	// let mut stack = vec![];
-	// for &s in &state.mines {
-	// 	if connected[s] != !0 { continue }
-	// 	connected[s] = s;
-	// 	stack.push(s);
-	// 	while let Some(u) = stack.pop() {
-	// 		for &(v, e) in &state.graph[u] {
-	// 			if user[e] == state.my && connected[v] == !0 {
-	// 				connected[v] = s;
-	// 				stack.push(v);
-	// 			}
-	// 		}
-	// 	}
-	// }
-	// let w = if state.p <= 4 { 1.0 } else if state.p <= 8 { 1.2 } else { 2.0 };
-	// for &u in &state.mines {
-	// 	for &(_, e) in &state.graph[u] {
-	// 		if connected[state.es[e].0] != connected[state.es[e].1] {
-	// 			score[e] *= w;
-	// 		}
-	// 	}
-	// }
-	// for u in 0..n {
-	// 	for &(_, e) in &state.graph[u] {
-	// 		if connected[state.es[e].0] != connected[state.es[e].1] {
-	// 			score[e] *= w;
-	// 		}
-	// 	}
-	// }
 	ret
 }
