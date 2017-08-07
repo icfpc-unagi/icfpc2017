@@ -12,6 +12,7 @@ import qualified Data.Set as S
 import Data.Tuple
 
 import qualified Graph.Adj as G
+import Lib.EPrint
 import Lib.Random
 
 import qualified Protocol as P
@@ -32,6 +33,7 @@ ai (P.QueryInit punter punters map_) = do
 
 ai (P.QueryMove moves) = do
   (punter, vs, esOld, passCnt, opCnt) <- get
+  liftIO $ eprint (passCnt, opCnt)
   let
     es = removeClaimed punter moves esOld
   put (punter, vs, es, passCnt, opCnt)
@@ -94,10 +96,10 @@ removeClaimed punter moves es = M.differenceWith subNat es cs
   where
     subNat n m = let
       a = n - m
-      in if a < 0 then Nothing else Just a
+      in if a <= 0 then Nothing else Just a
     css0 = concatMap (riversCnt punter) moves
     css1 = map (\((s,t),n) -> ((t,s),n)) css0
-    cs = M.unionWith (+) (M.fromList css0) (M.fromList css1)
+    cs = M.unionsWith (+) . map (uncurry M.singleton) $ css0 ++ css1
     
 riversCnt :: P.PunterId -> P.Move -> [(Edge, Int)]
 riversCnt punter (P.MoveClaim p s t) 
