@@ -1,4 +1,5 @@
 import Control.Applicative
+import Control.Monad
 import Data.Monoid
 import Options.Applicative
 
@@ -17,12 +18,14 @@ import Offline (offline)
 
 data Args = Args {
   aiStr :: String,
-  name :: String
+  name :: String,
+  flagHandshake :: Bool
   }
 
 args = Args 
   <$> strOption (long "ai" <> short 'a' <> metavar "AI")
   <*> strOption (long "name" <> short 'n' <> metavar "NAME" <> value "pUntos")
+  <*> switch (long "handshake" <> short 'H')
 
 main :: IO ()
 main = run =<< execParser opts
@@ -33,7 +36,9 @@ main = run =<< execParser opts
      <> header "" )
 
 run :: Args -> IO ()
-run (Args aiStr name) = do
+run (Args aiStr name flagHandshake) = do
+  when flagHandshake $
+    handshake name
   let
     ai = lookup aiStr $ [
       ("rand1", offline AI.Rand1.randAI1),
@@ -46,4 +51,4 @@ run (Args aiStr name) = do
       ("greedy", offline AI.Greedy.ai),
       ("pass", offline AI.Pass.ai)
       ]
-  maybe (error $ "not found AI name: " ++ aiStr) (handshake name >>) ai
+  maybe (error $ "not found AI name: " ++ aiStr) id ai
