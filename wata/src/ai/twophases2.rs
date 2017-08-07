@@ -136,11 +136,8 @@ pub fn play(state: &mut State) -> usize {
 					}
 				}
 			}
-			user[e] = !0;
-			debug!(e, q, score);
 		}
 		user[e] = !0;
-		debug!(score);
 		if maxscore.setmax(score) {
 			ret = e;
 		}
