@@ -94,8 +94,27 @@ function Start() {
 function RunCommand($command) {
   global $PROCS;
 
-  Write($PROCS[0]['pipes'][0], $command);
-  return Read($PROCS[0]['pipes'][1]);
+  if (isset($command['map'])) {
+    $settings = isset($command['settings']) ? $command['settings'] : [];
+    if (@$settings['options']) {
+      $child = 1;
+    } else {
+      $child = 0;
+    }
+    if (isset($command['state'])) {
+      unset($command['state']);
+    }
+  } else {
+    $child = $command['state']['child'];
+    $command['state'] = $command['state']['state'];
+  }
+
+  Write($PROCS[$child]['pipes'][0], $command);
+  $result = Read($PROCS[$child]['pipes'][1]);
+  $result['state'] = [
+      'child' => $child,
+      'state' => $result['state']];
+  return $result;
 }
 
 function ReadCommand() {
